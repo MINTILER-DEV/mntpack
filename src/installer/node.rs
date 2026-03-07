@@ -24,6 +24,7 @@ impl InstallDriver for NodeDriver {
 
         Ok(InstallResult {
             binary_path: manifest_bin(ctx)?,
+            shim_name: ctx.package_name.clone(),
         })
     }
 }

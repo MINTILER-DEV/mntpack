@@ -26,6 +26,7 @@ impl InstallDriver for GenericDriver {
         run_shell_command(build_command, &ctx.repo_path)?;
         Ok(InstallResult {
             binary_path: manifest_bin(ctx)?,
+            shim_name: ctx.package_name.clone(),
         })
     }
 }

@@ -139,14 +139,6 @@ fn resolve_root_path() -> Result<PathBuf> {
     Ok(home.join(APP_DIR))
 }
 
-pub fn package_name_from_repo(owner: &str, repo: &str) -> String {
-    if owner.eq_ignore_ascii_case("MINTILER-DEV") {
-        repo.to_string()
-    } else {
-        format!("{owner}-{repo}")
-    }
-}
-
 pub fn repo_key(owner: &str, repo: &str) -> String {
     format!("{owner}__{repo}")
 }

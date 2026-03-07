@@ -1,6 +1,10 @@
-use std::{collections::HashSet, path::Path};
+use std::{
+    collections::HashSet,
+    io::{self, Write},
+    path::Path,
+};
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use async_recursion::async_recursion;
 
 use crate::{
@@ -12,7 +16,7 @@ use crate::{
     },
     package::{
         manifest::Manifest,
-        record::{PackageRecord, load_record, save_record},
+        record::{PackageRecord, find_record_by_repo, load_record, save_record},
         resolver::resolve_repo,
     },
     shim::generator::{create_shim, ensure_bin_on_path},
@@ -22,10 +26,19 @@ pub async fn execute(
     runtime: &RuntimeContext,
     repo_input: &str,
     version: Option<&str>,
+    custom_name: Option<&str>,
     global: bool,
 ) -> Result<()> {
     let mut visited = HashSet::new();
-    let record = sync_package_internal(runtime, repo_input, version, global, &mut visited).await?;
+    let record = sync_package_internal(
+        runtime,
+        repo_input,
+        version,
+        custom_name,
+        global,
+        &mut visited,
+    )
+    .await?;
     println!("synced {} ({})", record.package_name, record.repo_spec());
     Ok(())
 }
@@ -35,27 +48,31 @@ pub async fn sync_package_internal(
     runtime: &RuntimeContext,
     repo_input: &str,
     version: Option<&str>,
+    custom_name: Option<&str>,
     global: bool,
     visited: &mut HashSet<String>,
 ) -> Result<PackageRecord> {
     let resolved = resolve_repo(repo_input, &runtime.config.default_owner)?;
-    let repo_dir = runtime.paths.repo_dir(&resolved.key);
-    let package_dir = runtime.paths.package_dir(&resolved.package_name);
-
     if visited.contains(&resolved.key) {
-        if let Some(record) = load_record(&package_dir)? {
+        if let Some(record) =
+            find_record_by_repo(&runtime.paths.packages, &resolved.owner, &resolved.repo)?
+        {
             return Ok(record);
         }
     } else {
         visited.insert(resolved.key.clone());
     }
 
+    let package_name = resolve_package_name(runtime, &resolved.owner, &resolved.repo, custom_name)?;
+    let repo_dir = runtime.paths.repo_dir(&resolved.key);
+    let package_dir = runtime.paths.package_dir(&package_name);
+
     sync_repo(&resolved, &repo_dir, version)?;
     let manifest = Manifest::load(&repo_dir)?;
 
     if let Some(manifest) = &manifest {
         for dependency in &manifest.dependencies {
-            sync_package_internal(runtime, dependency, None, false, visited).await?;
+            sync_package_internal(runtime, dependency, None, None, false, visited).await?;
         }
     }
 
@@ -65,26 +82,27 @@ pub async fn sync_package_internal(
 
     let runtime_driver = DriverRuntime { runtime };
     let installer_ctx = InstallContext {
-        package_name: resolved.package_name.clone(),
+        package_name: package_name.clone(),
         repo_path: repo_dir.clone(),
         package_dir: package_dir.clone(),
         manifest: manifest.clone(),
     };
 
-    let installed_binary = if let Some(manifest) = &manifest {
+    let (installed_binary, shim_name) = if let Some(manifest) = &manifest {
         if let Some(release_binary) =
             try_download_release_binary(runtime, &resolved, manifest).await?
         {
-            materialize_binary(&release_binary, &package_dir, &resolved.package_name)?
+            (
+                materialize_binary(&release_binary, &package_dir, &package_name)?,
+                package_name.clone(),
+            )
         } else {
-            InstallerManager::new()
-                .install(&installer_ctx, &runtime_driver)?
-                .binary_path
+            let result = InstallerManager::new().install(&installer_ctx, &runtime_driver)?;
+            (result.binary_path, result.shim_name)
         }
     } else {
-        InstallerManager::new()
-            .install(&installer_ctx, &runtime_driver)?
-            .binary_path
+        let result = InstallerManager::new().install(&installer_ctx, &runtime_driver)?;
+        (result.binary_path, result.shim_name)
     };
 
     if let Some(script) = manifest.as_ref().and_then(|m| m.postinstall.as_deref()) {
@@ -92,7 +110,7 @@ pub async fn sync_package_internal(
     }
 
     if global {
-        create_shim(runtime, &resolved.package_name, &installed_binary)?;
+        create_shim(runtime, &shim_name, &installed_binary)?;
         if ensure_bin_on_path(runtime)? {
             println!(
                 "added '{}' to PATH for global shims",
@@ -108,7 +126,7 @@ pub async fn sync_package_internal(
         .to_string();
 
     let record = PackageRecord {
-        package_name: resolved.package_name.clone(),
+        package_name,
         owner: resolved.owner.clone(),
         repo: resolved.repo.clone(),
         version: version.map(|v| v.to_string()),
@@ -122,4 +140,78 @@ pub async fn sync_package_internal(
 
 fn run_script(script: &str, repo_dir: &Path) -> Result<()> {
     run_shell_command(script, repo_dir)
+}
+
+fn resolve_package_name(
+    runtime: &RuntimeContext,
+    owner: &str,
+    repo: &str,
+    custom_name: Option<&str>,
+) -> Result<String> {
+    let desired = custom_name
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| repo.to_string());
+
+    if !is_conflicting_name(runtime, &desired, owner, repo)? {
+        return Ok(desired);
+    }
+
+    if custom_name.is_some() {
+        bail!(
+            "package name '{}' is already used by another repository. choose a different --name",
+            desired
+        );
+    }
+
+    prompt_for_custom_name(runtime, owner, repo, &desired)
+}
+
+fn is_conflicting_name(
+    runtime: &RuntimeContext,
+    name: &str,
+    owner: &str,
+    repo: &str,
+) -> Result<bool> {
+    let package_dir = runtime.paths.package_dir(name);
+    if !package_dir.exists() {
+        return Ok(false);
+    }
+
+    if let Some(record) = load_record(&package_dir)? {
+        return Ok(!(record.owner == owner && record.repo == repo));
+    }
+
+    Ok(true)
+}
+
+fn prompt_for_custom_name(
+    runtime: &RuntimeContext,
+    owner: &str,
+    repo: &str,
+    conflicting_name: &str,
+) -> Result<String> {
+    println!(
+        "package name '{}' is already used. choose a custom package name:",
+        conflicting_name
+    );
+
+    loop {
+        print!("custom name: ");
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let candidate = input.trim();
+        if candidate.is_empty() {
+            println!("name cannot be empty");
+            continue;
+        }
+        if is_conflicting_name(runtime, candidate, owner, repo)? {
+            println!("'{}' is already in use, choose another", candidate);
+            continue;
+        }
+        return Ok(candidate.to_string());
+    }
 }

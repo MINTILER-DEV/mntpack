@@ -17,6 +17,7 @@ pub async fn execute(runtime: &RuntimeContext) -> Result<()> {
             runtime,
             &record.repo_spec(),
             record.version.as_deref(),
+            Some(&record.package_name),
             record.global,
             &mut visited,
         )

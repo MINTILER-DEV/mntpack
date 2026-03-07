@@ -13,6 +13,8 @@ pub enum Commands {
         repo: String,
         #[arg(short = 'v', long = "version")]
         version: Option<String>,
+        #[arg(short = 'n', long = "name")]
+        name: Option<String>,
         #[arg(short = 'g', long = "global")]
         global: bool,
     },

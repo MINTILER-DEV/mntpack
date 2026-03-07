@@ -22,6 +22,7 @@ pub struct DriverRuntime<'a> {
 #[derive(Debug, Clone)]
 pub struct InstallResult {
     pub binary_path: PathBuf,
+    pub shim_name: String,
 }
 
 pub trait InstallDriver: Send + Sync {

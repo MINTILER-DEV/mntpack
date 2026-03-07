@@ -46,6 +46,7 @@ impl InstallerManager {
                     materialize_binary(&result.binary_path, &ctx.package_dir, &ctx.package_name)?;
                 return Ok(InstallResult {
                     binary_path: destination,
+                    shim_name: result.shim_name,
                 });
             }
         }

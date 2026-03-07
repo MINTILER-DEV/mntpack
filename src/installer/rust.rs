@@ -26,13 +26,16 @@ impl InstallDriver for RustDriver {
         )?;
 
         if ctx.manifest.as_ref().and_then(|m| m.bin.as_ref()).is_some() {
+            let bin = manifest_bin(ctx)?;
             return Ok(InstallResult {
-                binary_path: manifest_bin(ctx)?,
+                shim_name: infer_shim_name(&bin, &ctx.package_name),
+                binary_path: bin,
             });
         }
 
         let binary = infer_rust_binary(ctx)?;
         Ok(InstallResult {
+            shim_name: infer_shim_name(&binary, &ctx.package_name),
             binary_path: binary,
         })
     }
@@ -118,4 +121,13 @@ fn expected_binary_name(ctx: &InstallContext) -> Result<Option<String>> {
         executable_name.push_str(".exe");
     }
     Ok(Some(executable_name))
+}
+
+fn infer_shim_name(binary: &std::path::Path, fallback: &str) -> String {
+    binary
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .map(|name| name.to_string())
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| fallback.to_string())
 }

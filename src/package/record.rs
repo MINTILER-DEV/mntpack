@@ -62,3 +62,14 @@ pub fn load_all_records(packages_root: &Path) -> Result<Vec<PackageRecord>> {
     records.sort_by(|a, b| a.package_name.cmp(&b.package_name));
     Ok(records)
 }
+
+pub fn find_record_by_repo(
+    packages_root: &Path,
+    owner: &str,
+    repo: &str,
+) -> Result<Option<PackageRecord>> {
+    let records = load_all_records(packages_root)?;
+    Ok(records
+        .into_iter()
+        .find(|record| record.owner == owner && record.repo == repo))
+}

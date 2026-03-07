@@ -1,6 +1,6 @@
 use anyhow::{Result, bail};
 
-use crate::config::{normalize_repo_url, package_name_from_repo, repo_key};
+use crate::config::{normalize_repo_url, repo_key};
 
 #[derive(Debug, Clone)]
 pub struct ResolvedRepo {
@@ -8,7 +8,6 @@ pub struct ResolvedRepo {
     pub repo: String,
     pub clone_url: String,
     pub key: String,
-    pub package_name: String,
 }
 
 pub fn resolve_repo(input: &str, default_owner: &str) -> Result<ResolvedRepo> {
@@ -62,13 +61,11 @@ fn from_owner_repo(owner: &str, repo: &str) -> ResolvedRepo {
     let repo = repo.to_string();
     let clone_url = format!("https://github.com/{owner}/{repo}.git");
     let key = repo_key(&owner, &repo);
-    let package_name = package_name_from_repo(&owner, &repo);
 
     ResolvedRepo {
         owner,
         repo,
         clone_url,
         key,
-        package_name,
     }
 }
