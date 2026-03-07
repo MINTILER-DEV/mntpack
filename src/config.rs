@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 const APP_DIR: &str = ".mntpack";
 const CONFIG_FILE: &str = "config.json";
+pub const MNTPACK_HOME_ENV: &str = "MNTPACK_HOME";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -80,8 +81,7 @@ pub struct RuntimeContext {
 
 impl RuntimeContext {
     pub fn load_or_init() -> Result<Self> {
-        let home = dirs::home_dir().context("unable to locate user home directory")?;
-        let root = home.join(APP_DIR);
+        let root = resolve_root_path()?;
         let config_path = root.join(CONFIG_FILE);
         let repos = root.join("repos");
         let packages = root.join("packages");
@@ -125,6 +125,18 @@ impl RuntimeContext {
             .with_context(|| format!("failed to write {}", self.paths.config.display()))?;
         Ok(())
     }
+}
+
+fn resolve_root_path() -> Result<PathBuf> {
+    if let Ok(custom_home) = std::env::var(MNTPACK_HOME_ENV) {
+        let trimmed = custom_home.trim();
+        if !trimmed.is_empty() {
+            return Ok(PathBuf::from(trimmed));
+        }
+    }
+
+    let home = dirs::home_dir().context("unable to locate user home directory")?;
+    Ok(home.join(APP_DIR))
 }
 
 pub fn package_name_from_repo(owner: &str, repo: &str) -> String {
