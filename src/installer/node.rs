@@ -1,6 +1,6 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 
-use super::driver::{DriverRuntime, InstallContext, InstallDriver, InstallResult};
+use super::driver::{manifest_bin, run_command, DriverRuntime, InstallContext, InstallDriver, InstallResult};
 
 pub struct NodeDriver;
 
@@ -13,7 +13,11 @@ impl InstallDriver for NodeDriver {
         repo_path.join("package.json").exists()
     }
 
-    fn install(&self, _ctx: &InstallContext, _runtime: &DriverRuntime<'_>) -> Result<InstallResult> {
-        bail!("node driver not implemented yet")
+    fn install(&self, ctx: &InstallContext, runtime: &DriverRuntime<'_>) -> Result<InstallResult> {
+        run_command(&runtime.runtime.config.paths.npm, &["install"], &ctx.repo_path)?;
+
+        Ok(InstallResult {
+            binary_path: manifest_bin(ctx)?,
+        })
     }
 }

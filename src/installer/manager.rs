@@ -33,9 +33,10 @@ impl InstallerManager {
 
         for driver in &self.drivers {
             if driver.detect(&ctx.repo_path) {
+                println!("install driver: {}", driver.name());
                 let result = driver.install(ctx, runtime)?;
-                let destination = normalized_binary_destination(&ctx.package_dir, &ctx.package_name);
-                copy_binary(&result.binary_path, &destination)?;
+                let destination =
+                    materialize_binary(&result.binary_path, &ctx.package_dir, &ctx.package_name)?;
                 return Ok(InstallResult {
                     binary_path: destination,
                 });
@@ -69,5 +70,24 @@ fn copy_binary(source: &std::path::Path, destination: &std::path::Path) -> Resul
             destination.display()
         )
     })?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(destination)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(destination, perms)?;
+    }
+
     Ok(())
+}
+
+pub fn materialize_binary(
+    source: &std::path::Path,
+    package_dir: &std::path::Path,
+    package_name: &str,
+) -> Result<PathBuf> {
+    let destination = normalized_binary_destination(package_dir, package_name);
+    copy_binary(source, &destination)?;
+    Ok(destination)
 }

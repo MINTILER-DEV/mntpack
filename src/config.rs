@@ -1,6 +1,6 @@
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 use anyhow::{Context, Result};
@@ -141,12 +141,4 @@ pub fn normalize_repo_url(url: &str) -> String {
     } else {
         format!("{url}.git")
     }
-}
-
-pub fn ensure_parent(path: &Path) -> Result<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .with_context(|| format!("failed to create {}", parent.display()))?;
-    }
-    Ok(())
 }
