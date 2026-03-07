@@ -3,7 +3,9 @@ use std::{fs, path::PathBuf};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use super::driver::{manifest_bin, run_command, DriverRuntime, InstallContext, InstallDriver, InstallResult};
+use super::driver::{
+    DriverRuntime, InstallContext, InstallDriver, InstallResult, manifest_bin, run_command,
+};
 
 pub struct RustDriver;
 
@@ -30,7 +32,9 @@ impl InstallDriver for RustDriver {
         }
 
         let binary = infer_rust_binary(ctx)?;
-        Ok(InstallResult { binary_path: binary })
+        Ok(InstallResult {
+            binary_path: binary,
+        })
     }
 }
 

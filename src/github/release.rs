@@ -61,7 +61,11 @@ pub async fn try_download_release_binary(
         .await
         .context("failed to parse github release response")?;
 
-    let Some(asset) = release.assets.into_iter().find(|a| a.name == release_cfg.file) else {
+    let Some(asset) = release
+        .assets
+        .into_iter()
+        .find(|a| a.name == release_cfg.file)
+    else {
         return Ok(None);
     };
 
@@ -98,7 +102,10 @@ async fn download_and_extract_asset(
         .await
         .with_context(|| format!("failed to write {}", asset_path.display()))?;
 
-    let extract_dir = runtime.paths.cache.join(format!("extract-{}", resolved.key));
+    let extract_dir = runtime
+        .paths
+        .cache
+        .join(format!("extract-{}", resolved.key));
     if extract_dir.exists() {
         fs::remove_dir_all(&extract_dir)
             .with_context(|| format!("failed to clean {}", extract_dir.display()))?;
@@ -113,7 +120,8 @@ async fn download_and_extract_asset(
     } else {
         let direct_path = extract_dir.join(relative_bin);
         if let Some(parent) = direct_path.parent() {
-            fs::create_dir_all(parent).with_context(|| format!("failed to create {}", parent.display()))?;
+            fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create {}", parent.display()))?;
         }
         fs::copy(&asset_path, &direct_path).with_context(|| {
             format!(
@@ -139,7 +147,11 @@ async fn download_and_extract_asset(
         if !entry.file_type().is_file() {
             continue;
         }
-        if entry.file_name().to_string_lossy().eq_ignore_ascii_case(file_name) {
+        if entry
+            .file_name()
+            .to_string_lossy()
+            .eq_ignore_ascii_case(file_name)
+        {
             return Ok(entry.path().to_path_buf());
         }
     }
@@ -151,8 +163,10 @@ async fn download_and_extract_asset(
 }
 
 fn extract_zip(zip_path: &Path, destination: &Path) -> Result<()> {
-    let file = File::open(zip_path).with_context(|| format!("failed to open {}", zip_path.display()))?;
-    let mut archive = ZipArchive::new(file).with_context(|| format!("failed to read {}", zip_path.display()))?;
+    let file =
+        File::open(zip_path).with_context(|| format!("failed to open {}", zip_path.display()))?;
+    let mut archive =
+        ZipArchive::new(file).with_context(|| format!("failed to read {}", zip_path.display()))?;
     for idx in 0..archive.len() {
         let mut entry = archive.by_index(idx)?;
         let Some(enclosed) = entry.enclosed_name().map(|p| p.to_owned()) else {
@@ -177,8 +191,8 @@ fn extract_zip(zip_path: &Path, destination: &Path) -> Result<()> {
 }
 
 fn extract_tar_gz(archive_path: &Path, destination: &Path) -> Result<()> {
-    let file =
-        File::open(archive_path).with_context(|| format!("failed to open {}", archive_path.display()))?;
+    let file = File::open(archive_path)
+        .with_context(|| format!("failed to open {}", archive_path.display()))?;
     let mut reader = GzDecoder::new(file);
     let mut data = Vec::new();
     reader.read_to_end(&mut data)?;

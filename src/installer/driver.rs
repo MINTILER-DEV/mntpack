@@ -3,7 +3,7 @@ use std::{
     process::Command,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 use crate::{config::RuntimeContext, package::manifest::Manifest};
 
@@ -63,7 +63,10 @@ pub fn run_shell_command(command: &str, cwd: &Path) -> Result<()> {
         .status()
         .with_context(|| format!("failed to run script '{command}' in {}", cwd.display()))?;
     if !status.success() {
-        bail!("script '{command}' failed with exit code {:?}", status.code());
+        bail!(
+            "script '{command}' failed with exit code {:?}",
+            status.code()
+        );
     }
     Ok(())
 }

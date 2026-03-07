@@ -1,6 +1,8 @@
 use anyhow::Result;
 
-use super::driver::{manifest_bin, run_command, DriverRuntime, InstallContext, InstallDriver, InstallResult};
+use super::driver::{
+    DriverRuntime, InstallContext, InstallDriver, InstallResult, manifest_bin, run_command,
+};
 
 pub struct NodeDriver;
 
@@ -14,7 +16,11 @@ impl InstallDriver for NodeDriver {
     }
 
     fn install(&self, ctx: &InstallContext, runtime: &DriverRuntime<'_>) -> Result<InstallResult> {
-        run_command(&runtime.runtime.config.paths.npm, &["install"], &ctx.repo_path)?;
+        run_command(
+            &runtime.runtime.config.paths.npm,
+            &["install"],
+            &ctx.repo_path,
+        )?;
 
         Ok(InstallResult {
             binary_path: manifest_bin(ctx)?,

@@ -1,6 +1,8 @@
 use anyhow::Result;
 
-use super::driver::{manifest_bin, run_command, DriverRuntime, InstallContext, InstallDriver, InstallResult};
+use super::driver::{
+    DriverRuntime, InstallContext, InstallDriver, InstallResult, manifest_bin, run_command,
+};
 
 pub struct PythonDriver;
 

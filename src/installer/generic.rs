@@ -1,7 +1,7 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 use super::driver::{
-    manifest_bin, run_shell_command, DriverRuntime, InstallContext, InstallDriver, InstallResult,
+    DriverRuntime, InstallContext, InstallDriver, InstallResult, manifest_bin, run_shell_command,
 };
 
 pub struct GenericDriver;

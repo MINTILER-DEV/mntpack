@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 use crate::config::{normalize_repo_url, package_name_from_repo, repo_key};
 
@@ -24,14 +24,21 @@ pub fn resolve_repo(input: &str, default_owner: &str) -> Result<ResolvedRepo> {
     if trimmed.contains('/') {
         let mut parts = trimmed.splitn(2, '/');
         let owner = parts.next().unwrap_or_default().trim();
-        let repo = parts.next().unwrap_or_default().trim().trim_end_matches(".git");
+        let repo = parts
+            .next()
+            .unwrap_or_default()
+            .trim()
+            .trim_end_matches(".git");
         if owner.is_empty() || repo.is_empty() {
             bail!("invalid repository shorthand: {trimmed}");
         }
         return Ok(from_owner_repo(owner, repo));
     }
 
-    Ok(from_owner_repo(default_owner, trimmed.trim_end_matches(".git")))
+    Ok(from_owner_repo(
+        default_owner,
+        trimmed.trim_end_matches(".git"),
+    ))
 }
 
 fn resolve_url(url: &str) -> Result<ResolvedRepo> {

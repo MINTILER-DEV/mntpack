@@ -1,9 +1,9 @@
 use std::{fs, path::Path};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use git2::{
-    build::CheckoutBuilder, AnnotatedCommit, AutotagOption, FetchOptions, Oid, RemoteCallbacks,
-    Repository,
+    AnnotatedCommit, AutotagOption, FetchOptions, Oid, RemoteCallbacks, Repository,
+    build::CheckoutBuilder,
 };
 
 use crate::package::resolver::ResolvedRepo;
@@ -29,7 +29,8 @@ pub fn sync_repo(resolved: &ResolvedRepo, repo_dir: &Path, version: Option<&str>
 
 fn clone_repo(clone_url: &str, repo_dir: &Path) -> Result<()> {
     if let Some(parent) = repo_dir.parent() {
-        fs::create_dir_all(parent).with_context(|| format!("failed to create {}", parent.display()))?;
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
     }
     Repository::clone(clone_url, repo_dir)
         .with_context(|| format!("failed to clone {clone_url} into {}", repo_dir.display()))?;
@@ -141,7 +142,10 @@ fn fetch_all(repo: &Repository) -> Result<()> {
         .context("failed to access origin remote")?;
     remote
         .fetch(
-            &["refs/heads/*:refs/remotes/origin/*", "refs/tags/*:refs/tags/*"],
+            &[
+                "refs/heads/*:refs/remotes/origin/*",
+                "refs/tags/*:refs/tags/*",
+            ],
             Some(&mut fo),
             None,
         )

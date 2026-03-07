@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 use super::{
     driver::{DriverRuntime, InstallContext, InstallDriver, InstallResult},
@@ -26,9 +26,16 @@ impl InstallerManager {
         }
     }
 
-    pub fn install(&self, ctx: &InstallContext, runtime: &DriverRuntime<'_>) -> Result<InstallResult> {
+    pub fn install(
+        &self,
+        ctx: &InstallContext,
+        runtime: &DriverRuntime<'_>,
+    ) -> Result<InstallResult> {
         fs::create_dir_all(&ctx.package_dir).with_context(|| {
-            format!("failed to create package directory {}", ctx.package_dir.display())
+            format!(
+                "failed to create package directory {}",
+                ctx.package_dir.display()
+            )
         })?;
 
         for driver in &self.drivers {
@@ -47,9 +54,17 @@ impl InstallerManager {
     }
 }
 
-fn normalized_binary_destination(package_dir: &std::path::Path, package_name: &str) -> PathBuf {
+fn normalized_binary_destination(
+    source: &std::path::Path,
+    package_dir: &std::path::Path,
+    package_name: &str,
+) -> PathBuf {
     if cfg!(windows) {
-        package_dir.join(format!("{package_name}.exe"))
+        if let Some(ext) = source.extension().and_then(|e| e.to_str()) {
+            package_dir.join(format!("{package_name}.{ext}"))
+        } else {
+            package_dir.join(format!("{package_name}.exe"))
+        }
     } else {
         package_dir.join(package_name)
     }
@@ -87,7 +102,7 @@ pub fn materialize_binary(
     package_dir: &std::path::Path,
     package_name: &str,
 ) -> Result<PathBuf> {
-    let destination = normalized_binary_destination(package_dir, package_name);
+    let destination = normalized_binary_destination(source, package_dir, package_name);
     copy_binary(source, &destination)?;
     Ok(destination)
 }

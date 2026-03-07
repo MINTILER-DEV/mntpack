@@ -32,8 +32,8 @@ impl Manifest {
             return Ok(None);
         }
 
-        let content =
-            fs::read_to_string(&file).with_context(|| format!("failed to read {}", file.display()))?;
+        let content = fs::read_to_string(&file)
+            .with_context(|| format!("failed to read {}", file.display()))?;
         let manifest = serde_json::from_str::<Self>(&content)
             .with_context(|| format!("failed to parse {}", file.display()))?;
         Ok(Some(manifest))

@@ -7,12 +7,12 @@ use crate::{
     config::RuntimeContext,
     github::{clone::sync_repo, release::try_download_release_binary},
     installer::{
-        driver::{run_shell_command, DriverRuntime, InstallContext},
-        manager::{materialize_binary, InstallerManager},
+        driver::{DriverRuntime, InstallContext, run_shell_command},
+        manager::{InstallerManager, materialize_binary},
     },
     package::{
         manifest::Manifest,
-        record::{load_record, save_record, PackageRecord},
+        record::{PackageRecord, load_record, save_record},
         resolver::resolve_repo,
     },
     shim::generator::create_shim,
@@ -72,7 +72,9 @@ pub async fn sync_package_internal(
     };
 
     let installed_binary = if let Some(manifest) = &manifest {
-        if let Some(release_binary) = try_download_release_binary(runtime, &resolved, manifest).await? {
+        if let Some(release_binary) =
+            try_download_release_binary(runtime, &resolved, manifest).await?
+        {
             materialize_binary(&release_binary, &package_dir, &resolved.package_name)?
         } else {
             InstallerManager::new()

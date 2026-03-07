@@ -36,7 +36,8 @@ pub fn load_record(package_dir: &Path) -> Result<Option<PackageRecord>> {
     if !path.exists() {
         return Ok(None);
     }
-    let content = fs::read_to_string(&path).with_context(|| format!("failed to read {}", path.display()))?;
+    let content =
+        fs::read_to_string(&path).with_context(|| format!("failed to read {}", path.display()))?;
     let record = serde_json::from_str::<PackageRecord>(&content)
         .with_context(|| format!("failed to parse {}", path.display()))?;
     Ok(Some(record))
