@@ -15,7 +15,7 @@ use crate::{
         record::{PackageRecord, load_record, save_record},
         resolver::resolve_repo,
     },
-    shim::generator::create_shim,
+    shim::generator::{create_shim, ensure_bin_on_path},
 };
 
 pub async fn execute(
@@ -93,6 +93,12 @@ pub async fn sync_package_internal(
 
     if global {
         create_shim(runtime, &resolved.package_name, &installed_binary)?;
+        if ensure_bin_on_path(runtime)? {
+            println!(
+                "added '{}' to PATH for global shims",
+                runtime.paths.bin.display()
+            );
+        }
     }
 
     let binary_rel_path = installed_binary
