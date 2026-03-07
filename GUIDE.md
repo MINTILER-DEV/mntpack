@@ -1,0 +1,196 @@
+# mntpack Guide
+
+This guide is for daily use of `mntpack`: installing tools from GitHub, updating them, running them, and managing configuration.
+
+## 1. Install
+
+If you are using the installer project:
+
+```bash
+cd mntpack-installer
+cargo build --release
+./target/release/mntpack-installer
+```
+
+The installer:
+
+- asks for install base directory (default: home directory),
+- creates `.mntpack` folders,
+- installs `mntpack` into `.mntpack/bin`,
+- sets PATH and `MNTPACK_HOME`.
+
+## 2. Core Commands
+
+```bash
+mntpack sync <repo> [-v <version_or_commit>] [-n <custom_name>] [-g]
+mntpack run <package> [args...]
+mntpack list
+mntpack update [package]
+mntpack doctor
+```
+
+## 3. Repository Input Formats
+
+You can sync with:
+
+- `repo` (uses `defaultOwner` from config),
+- `owner/repo`,
+- `https://github.com/owner/repo.git`
+
+Examples:
+
+```bash
+mntpack sync scalf
+mntpack sync MINTILER-DEV/scalf
+mntpack sync https://github.com/user/repo.git
+mntpack sync scalf -v 1.2.0
+mntpack sync scalf -v 8f3c2a1
+```
+
+## 4. Package Naming
+
+Default package name is the repository name.
+
+You can set a custom package name:
+
+```bash
+mntpack sync owner/repo --name mytool
+```
+
+Behavior:
+
+- if a name is already used by a different installed package, `mntpack` asks for a custom name,
+- names are treated as occupied only when install succeeds (record exists),
+- if `sync` input matches an already-installed package name, `mntpack` updates that package.
+
+## 5. Updating
+
+Update all:
+
+```bash
+mntpack update
+```
+
+Update one package:
+
+```bash
+mntpack update mytool
+```
+
+`update <package>` uses the same sync pipeline for that package.
+
+## 6. Running Packages
+
+Run directly:
+
+```bash
+mntpack run mytool
+```
+
+Pass args:
+
+```bash
+mntpack run mytool -- --flag value
+```
+
+If `autoUpdateOnRun` is enabled, `run` syncs before launching.
+
+## 7. Global Shims
+
+Use `-g` to create a global shim:
+
+```bash
+mntpack sync owner/repo -g
+```
+
+Shims are created under:
+
+- `<MNTPACK_HOME>/bin` (or `~/.mntpack/bin` if env var is unset).
+
+Notes:
+
+- Rust projects use their Rust executable name for global shim naming.
+- Shims call `mntpack run <package>` when possible, so auto-update-on-run applies there too.
+
+## 8. Config
+
+Show full config:
+
+```bash
+mntpack config show
+```
+
+Get one key:
+
+```bash
+mntpack config get defaultOwner
+mntpack config get autoUpdateOnRun
+```
+
+Set values:
+
+```bash
+mntpack config set defaultOwner MINTILER-DEV
+mntpack config set autoUpdateOnRun true
+mntpack config set paths.cmake cmake
+mntpack config set paths.make make
+```
+
+Reset:
+
+```bash
+mntpack config reset
+```
+
+Important config keys:
+
+- `defaultOwner`
+- `autoUpdateOnRun` (`true` / `false`)
+- `paths.git`
+- `paths.python`
+- `paths.pip`
+- `paths.node`
+- `paths.npm`
+- `paths.cargo`
+- `paths.cmake`
+- `paths.make`
+
+## 9. Project Type Detection
+
+`mntpack` uses installer drivers:
+
+- Rust: `Cargo.toml`
+- Python: `requirements.txt` or `pyproject.toml`
+- Node: `package.json`
+- C/C++: `CMakeLists.txt` or `Makefile`/`makefile`
+- Generic: fallback with `mntpack.json` build/bin
+
+## 10. Troubleshooting
+
+Check tools:
+
+```bash
+mntpack doctor
+```
+
+If a tool is missing, set the matching config path key to the right executable path.
+
+If shims are not found in your shell, ensure `<MNTPACK_HOME>/bin` is on PATH and open a new terminal.
+
+## 11. Files and Folders
+
+Default root:
+
+```text
+~/.mntpack
+```
+
+Structure:
+
+```text
+config.json
+repos/
+packages/
+cache/
+bin/
+```
