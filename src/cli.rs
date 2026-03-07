@@ -24,4 +24,16 @@ pub enum Commands {
     List,
     Update,
     Doctor,
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ConfigAction {
+    Show,
+    Get { key: String },
+    Set { key: String, value: String },
+    Reset,
 }

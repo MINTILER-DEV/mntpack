@@ -118,6 +118,13 @@ impl RuntimeContext {
             },
         })
     }
+
+    pub fn save_config(&self, config: &Config) -> Result<()> {
+        let serialized = serde_json::to_string_pretty(config)?;
+        fs::write(&self.paths.config, serialized)
+            .with_context(|| format!("failed to write {}", self.paths.config.display()))?;
+        Ok(())
+    }
 }
 
 pub fn package_name_from_repo(owner: &str, repo: &str) -> String {

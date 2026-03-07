@@ -1,0 +1,61 @@
+use anyhow::{Result, bail};
+
+use crate::{
+    cli::ConfigAction,
+    config::{Config, RuntimeContext},
+};
+
+pub fn execute(runtime: &RuntimeContext, action: ConfigAction) -> Result<()> {
+    match action {
+        ConfigAction::Show => {
+            println!("{}", serde_json::to_string_pretty(&runtime.config)?);
+        }
+        ConfigAction::Get { key } => {
+            let value = get_value(&runtime.config, &key)?;
+            println!("{value}");
+        }
+        ConfigAction::Set { key, value } => {
+            let mut config = runtime.config.clone();
+            set_value(&mut config, &key, &value)?;
+            runtime.save_config(&config)?;
+            println!("updated {key} = {value}");
+        }
+        ConfigAction::Reset => {
+            let config = Config::default();
+            runtime.save_config(&config)?;
+            println!("config reset to defaults");
+        }
+    }
+    Ok(())
+}
+
+fn get_value(config: &Config, key: &str) -> Result<String> {
+    match normalize_key(key).as_str() {
+        "defaultowner" => Ok(config.default_owner.clone()),
+        "pathsgit" => Ok(config.paths.git.clone()),
+        "pathspython" => Ok(config.paths.python.clone()),
+        "pathspip" => Ok(config.paths.pip.clone()),
+        "pathsnode" => Ok(config.paths.node.clone()),
+        "pathsnpm" => Ok(config.paths.npm.clone()),
+        "pathscargo" => Ok(config.paths.cargo.clone()),
+        _ => bail!("unknown config key '{key}'"),
+    }
+}
+
+fn set_value(config: &mut Config, key: &str, value: &str) -> Result<()> {
+    match normalize_key(key).as_str() {
+        "defaultowner" => config.default_owner = value.to_string(),
+        "pathsgit" => config.paths.git = value.to_string(),
+        "pathspython" => config.paths.python = value.to_string(),
+        "pathspip" => config.paths.pip = value.to_string(),
+        "pathsnode" => config.paths.node = value.to_string(),
+        "pathsnpm" => config.paths.npm = value.to_string(),
+        "pathscargo" => config.paths.cargo = value.to_string(),
+        _ => bail!("unknown config key '{key}'"),
+    }
+    Ok(())
+}
+
+fn normalize_key(key: &str) -> String {
+    key.trim().to_ascii_lowercase().replace(['.', '_', '-'], "")
+}

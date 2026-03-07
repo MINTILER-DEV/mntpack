@@ -26,6 +26,7 @@ async fn main() -> Result<()> {
         Commands::List => commands::list::execute(&runtime)?,
         Commands::Update => commands::update::execute(&runtime).await?,
         Commands::Doctor => commands::doctor::execute(&runtime)?,
+        Commands::Config { action } => commands::config::execute(&runtime, action)?,
     }
 
     Ok(())
