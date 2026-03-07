@@ -16,6 +16,8 @@ pub fn execute(runtime: &RuntimeContext) -> Result<()> {
         ("cargo", runtime.config.paths.cargo.as_str()),
         ("node", runtime.config.paths.node.as_str()),
         ("npm", runtime.config.paths.npm.as_str()),
+        ("cmake", runtime.config.paths.cmake.as_str()),
+        ("make", runtime.config.paths.make.as_str()),
     ];
 
     for (label, tool) in checks {

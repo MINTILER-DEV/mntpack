@@ -26,9 +26,13 @@ async fn main() -> Result<()> {
             commands::sync::execute(&runtime, &repo, version.as_deref(), name.as_deref(), global)
                 .await?
         }
-        Commands::Run { package, args } => commands::run::execute(&runtime, &package, &args)?,
+        Commands::Run { package, args } => {
+            commands::run::execute(&runtime, &package, &args).await?
+        }
         Commands::List => commands::list::execute(&runtime)?,
-        Commands::Update => commands::update::execute(&runtime).await?,
+        Commands::Update { package } => {
+            commands::update::execute(&runtime, package.as_deref()).await?
+        }
         Commands::Doctor => commands::doctor::execute(&runtime)?,
         Commands::Config { action } => commands::config::execute(&runtime, action)?,
     }

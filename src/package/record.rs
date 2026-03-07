@@ -73,3 +73,11 @@ pub fn find_record_by_repo(
         .into_iter()
         .find(|record| record.owner == owner && record.repo == repo))
 }
+
+pub fn find_record_by_package_name(
+    packages_root: &Path,
+    package_name: &str,
+) -> Result<Option<PackageRecord>> {
+    let package_dir = packages_root.join(package_name);
+    load_record(&package_dir)
+}

@@ -2,9 +2,32 @@ use std::collections::HashSet;
 
 use anyhow::Result;
 
-use crate::{config::RuntimeContext, package::record::load_all_records};
+use crate::{
+    config::RuntimeContext,
+    package::record::{find_record_by_package_name, load_all_records},
+};
 
-pub async fn execute(runtime: &RuntimeContext) -> Result<()> {
+pub async fn execute(runtime: &RuntimeContext, package: Option<&str>) -> Result<()> {
+    if let Some(package_name) = package {
+        if let Some(record) = find_record_by_package_name(&runtime.paths.packages, package_name)? {
+            let mut visited = HashSet::new();
+            crate::commands::sync::sync_package_internal(
+                runtime,
+                &record.repo_spec(),
+                record.version.as_deref(),
+                Some(&record.package_name),
+                record.global,
+                &mut visited,
+            )
+            .await?;
+            println!("updated {}", record.package_name);
+            return Ok(());
+        }
+
+        crate::commands::sync::execute(runtime, package_name, None, None, false).await?;
+        return Ok(());
+    }
+
     let records = load_all_records(&runtime.paths.packages)?;
     if records.is_empty() {
         println!("no installed packages to update");

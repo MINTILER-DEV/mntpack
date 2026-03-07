@@ -19,11 +19,13 @@ It can clone/pull repositories, install from releases or source, create global s
   - Rust
   - Python
   - Node
+  - C/C++ (`cmake` / `make`)
   - Generic (`mntpack.json` build command)
 - GitHub release asset download with source-build fallback
 - Package manifest support (`mntpack.json`)
 - Global shim generation (`-g/--global`)
 - PATH integration for global shims
+- Optional auto-update before run (`autoUpdateOnRun`)
 - Config management from CLI
 
 ## Installation Layout
@@ -78,7 +80,7 @@ Installer behavior:
 mntpack sync <repo> [-v <version_or_commit>] [-n <custom_name>] [-g]
 mntpack run <package> [args...]
 mntpack list
-mntpack update
+mntpack update [package]
 mntpack doctor
 mntpack config show
 mntpack config get <key>
@@ -108,6 +110,7 @@ mntpack run scalf
 - Shims are placed in `<MNTPACK_HOME>/bin` (or `~/.mntpack/bin`)
 - Rust projects use the Rust executable name for shim name when globally installed
 - Shim target paths resolve from `MNTPACK_HOME`
+- Shims try `mntpack run <package>` first (enables auto-update-on-run behavior), then fall back to direct binary execution
 
 ## Manifest (`mntpack.json`)
 

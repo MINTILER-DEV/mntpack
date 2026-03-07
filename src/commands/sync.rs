@@ -16,7 +16,10 @@ use crate::{
     },
     package::{
         manifest::Manifest,
-        record::{PackageRecord, find_record_by_repo, load_record, save_record},
+        record::{
+            PackageRecord, find_record_by_package_name, find_record_by_repo, load_record,
+            save_record,
+        },
         resolver::resolve_repo,
     },
     shim::generator::{create_shim, ensure_bin_on_path},
@@ -29,12 +32,24 @@ pub async fn execute(
     custom_name: Option<&str>,
     global: bool,
 ) -> Result<()> {
+    let mut effective_repo_input = repo_input.to_string();
+    let mut effective_name = custom_name.map(ToString::to_string);
+
+    if is_simple_identifier(repo_input) {
+        if let Some(record) = find_record_by_package_name(&runtime.paths.packages, repo_input)? {
+            effective_repo_input = record.repo_spec();
+            if effective_name.is_none() {
+                effective_name = Some(record.package_name);
+            }
+        }
+    }
+
     let mut visited = HashSet::new();
     let record = sync_package_internal(
         runtime,
-        repo_input,
+        &effective_repo_input,
         version,
-        custom_name,
+        effective_name.as_deref(),
         global,
         &mut visited,
     )
@@ -110,7 +125,7 @@ pub async fn sync_package_internal(
     }
 
     if global {
-        create_shim(runtime, &shim_name, &installed_binary)?;
+        create_shim(runtime, &package_name, &shim_name, &installed_binary)?;
         if ensure_bin_on_path(runtime)? {
             println!(
                 "added '{}' to PATH for global shims",
@@ -175,15 +190,11 @@ fn is_conflicting_name(
     repo: &str,
 ) -> Result<bool> {
     let package_dir = runtime.paths.package_dir(name);
-    if !package_dir.exists() {
-        return Ok(false);
-    }
-
     if let Some(record) = load_record(&package_dir)? {
         return Ok(!(record.owner == owner && record.repo == repo));
     }
 
-    Ok(true)
+    Ok(false)
 }
 
 fn prompt_for_custom_name(
@@ -214,4 +225,8 @@ fn prompt_for_custom_name(
         }
         return Ok(candidate.to_string());
     }
+}
+
+fn is_simple_identifier(input: &str) -> bool {
+    !input.contains('/') && !input.contains("://")
 }

@@ -9,6 +9,7 @@ pub const MNTPACK_HOME_ENV: &str = "MNTPACK_HOME";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(default)]
 pub struct ToolPaths {
     pub git: String,
     pub python: String,
@@ -16,6 +17,8 @@ pub struct ToolPaths {
     pub node: String,
     pub npm: String,
     pub cargo: String,
+    pub cmake: String,
+    pub make: String,
 }
 
 impl Default for ToolPaths {
@@ -27,6 +30,8 @@ impl Default for ToolPaths {
             node: "node".to_string(),
             npm: "npm".to_string(),
             cargo: "cargo".to_string(),
+            cmake: "cmake".to_string(),
+            make: "make".to_string(),
         }
     }
 }
@@ -38,6 +43,8 @@ pub struct Config {
     pub default_owner: String,
     #[serde(default)]
     pub paths: ToolPaths,
+    #[serde(default)]
+    pub auto_update_on_run: bool,
 }
 
 impl Default for Config {
@@ -45,6 +52,7 @@ impl Default for Config {
         Self {
             default_owner: default_owner(),
             paths: ToolPaths::default(),
+            auto_update_on_run: false,
         }
     }
 }

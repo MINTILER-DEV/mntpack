@@ -3,6 +3,7 @@ use std::{fs, path::PathBuf};
 use anyhow::{Context, Result, bail};
 
 use super::{
+    cpp::CppDriver,
     driver::{DriverRuntime, InstallContext, InstallDriver, InstallResult},
     generic::GenericDriver,
     node::NodeDriver,
@@ -21,6 +22,7 @@ impl InstallerManager {
                 Box::new(RustDriver),
                 Box::new(PythonDriver),
                 Box::new(NodeDriver),
+                Box::new(CppDriver),
                 Box::new(GenericDriver),
             ],
         }

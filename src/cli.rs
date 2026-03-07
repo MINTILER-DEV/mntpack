@@ -24,7 +24,9 @@ pub enum Commands {
         args: Vec<String>,
     },
     List,
-    Update,
+    Update {
+        package: Option<String>,
+    },
     Doctor,
     Config {
         #[command(subcommand)]

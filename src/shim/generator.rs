@@ -8,7 +8,12 @@ use anyhow::{Context, Result};
 
 use crate::config::{MNTPACK_HOME_ENV, RuntimeContext};
 
-pub fn create_shim(runtime: &RuntimeContext, shim_name: &str, binary_path: &Path) -> Result<()> {
+pub fn create_shim(
+    runtime: &RuntimeContext,
+    package_name: &str,
+    shim_name: &str,
+    binary_path: &Path,
+) -> Result<()> {
     let relative_binary = binary_path
         .strip_prefix(&runtime.paths.root)
         .unwrap_or(binary_path);
@@ -18,7 +23,7 @@ pub fn create_shim(runtime: &RuntimeContext, shim_name: &str, binary_path: &Path
         let relative = relative_binary.to_string_lossy().replace('/', "\\");
         let default_root = runtime.paths.root.to_string_lossy();
         let content = format!(
-            "@echo off\r\nset \"{MNTPACK_HOME_ENV}=%{MNTPACK_HOME_ENV}%\"\r\nif \"%{MNTPACK_HOME_ENV}%\"==\"\" set \"{MNTPACK_HOME_ENV}={default_root}\"\r\n\"%{MNTPACK_HOME_ENV}%\\{relative}\" %*\r\n"
+            "@echo off\r\nset \"{MNTPACK_HOME_ENV}=%{MNTPACK_HOME_ENV}%\"\r\nif \"%{MNTPACK_HOME_ENV}%\"==\"\" set \"{MNTPACK_HOME_ENV}={default_root}\"\r\nset \"MNTPACK_CMD=%{MNTPACK_HOME_ENV}%\\bin\\mntpack.exe\"\r\nif exist \"%MNTPACK_CMD%\" (\r\n  \"%MNTPACK_CMD%\" run \"{package_name}\" %*\r\n) else (\r\n  \"%{MNTPACK_HOME_ENV}%\\{relative}\" %*\r\n)\r\n"
         );
         fs::write(&shim_path, content)
             .with_context(|| format!("failed to write shim {}", shim_path.display()))?;
@@ -29,8 +34,8 @@ pub fn create_shim(runtime: &RuntimeContext, shim_name: &str, binary_path: &Path
     let relative = relative_binary.to_string_lossy().replace('\\', "/");
     let default_root = runtime.paths.root.to_string_lossy();
     let content = format!(
-        "#!/bin/sh\n{0}=\"${{{0}:-{1}}}\"\nexec \"${{{0}}}/{2}\" \"$@\"\n",
-        MNTPACK_HOME_ENV, default_root, relative
+        "#!/bin/sh\n{0}=\"${{{0}:-{1}}}\"\nMNTPACK_CMD=\"${{{0}}}/bin/mntpack\"\nif [ -x \"$MNTPACK_CMD\" ]; then\n  exec \"$MNTPACK_CMD\" run \"{2}\" \"$@\"\nfi\nexec \"${{{0}}}/{3}\" \"$@\"\n",
+        MNTPACK_HOME_ENV, default_root, package_name, relative
     );
     fs::write(&shim_path, content)
         .with_context(|| format!("failed to write shim {}", shim_path.display()))?;

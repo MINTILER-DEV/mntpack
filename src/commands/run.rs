@@ -1,13 +1,28 @@
-use std::process::Command;
+use std::{collections::HashSet, process::Command};
 
 use anyhow::{Context, Result, bail};
 
 use crate::{config::RuntimeContext, package::record::load_record};
 
-pub fn execute(runtime: &RuntimeContext, package_name: &str, args: &[String]) -> Result<()> {
+pub async fn execute(runtime: &RuntimeContext, package_name: &str, args: &[String]) -> Result<()> {
     let package_dir = runtime.paths.package_dir(package_name);
     if !package_dir.exists() {
         bail!("package '{package_name}' is not installed");
+    }
+
+    if runtime.config.auto_update_on_run {
+        if let Some(record) = load_record(&package_dir)? {
+            let mut visited = HashSet::new();
+            crate::commands::sync::sync_package_internal(
+                runtime,
+                &record.repo_spec(),
+                record.version.as_deref(),
+                Some(&record.package_name),
+                record.global,
+                &mut visited,
+            )
+            .await?;
+        }
     }
 
     let binary_path = if let Some(record) = load_record(&package_dir)? {

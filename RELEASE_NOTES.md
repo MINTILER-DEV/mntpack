@@ -1,5 +1,21 @@
 # Release Notes
 
+## 0.1.2 - 2026-03-07
+
+### Added
+- `update [package]` support for targeted package updates.
+- C/C++ project driver with `CMakeLists.txt` / `Makefile` detection.
+- C/C++ build support via `cmake` or `make` with executable auto-detection.
+- New config option: `autoUpdateOnRun` (default: `false`).
+- New configurable tool paths: `paths.cmake` and `paths.make`.
+
+### Changed
+- Package names are now considered occupied only after a successful install (record-based conflict checks).
+- `sync <package-name>` now updates an already-installed package when the name matches.
+- Global shims now prefer invoking `mntpack run <package>` and fall back to direct binary execution.
+- `run` now performs an automatic sync/update first when `autoUpdateOnRun` is enabled.
+- Git sync behavior now fetches and hard-syncs to `origin` default branch to ensure repulls happen reliably.
+
 ## 0.1.1 - 2026-03-07
 
 ### Added
