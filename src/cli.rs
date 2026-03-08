@@ -21,6 +21,10 @@ pub enum Commands {
         #[arg(short = 'g', long = "global")]
         global: bool,
     },
+    #[command(alias = "uninstall", alias = "rm", alias = "unsync")]
+    Remove {
+        repo: String,
+    },
     Run {
         package: String,
         #[arg(trailing_var_arg = true)]

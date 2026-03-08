@@ -79,6 +79,10 @@ Installer behavior:
 ```bash
 mntpack sync <repo> [-v <tag_or_commit>] [-r <release_asset_file>] [-n <custom_name>] [-g]
 mntpack add <repo> [-v <tag_or_commit>] [-r <release_asset_file>] [-n <custom_name>] [-g]
+mntpack remove <repo_or_package>
+mntpack uninstall <repo_or_package>
+mntpack rm <repo_or_package>
+mntpack unsync <repo_or_package>
 mntpack run <package> [args...]
 mntpack list
 mntpack update [package]
@@ -97,6 +101,7 @@ mntpack sync MINTILER-DEV/scalf -g
 mntpack sync https://github.com/user/repo.git -v 1.2.0
 mntpack sync owner/repo -v v1.2.0 -r tool-win64.zip
 mntpack sync owner/repo --name custom-tool
+mntpack rm custom-tool
 mntpack run scalf
 ```
 

@@ -24,6 +24,10 @@ The installer:
 ```bash
 mntpack sync <repo> [-v <tag_or_commit>] [-r <release_asset_file>] [-n <custom_name>] [-g]
 mntpack add <repo> [-v <tag_or_commit>] [-r <release_asset_file>] [-n <custom_name>] [-g]
+mntpack remove <repo_or_package>
+mntpack uninstall <repo_or_package>
+mntpack rm <repo_or_package>
+mntpack unsync <repo_or_package>
 mntpack run <package> [args...]
 mntpack list
 mntpack update [package]
@@ -88,7 +92,24 @@ mntpack update mytool
 
 `update <package>` uses the same sync pipeline for that package.
 
-## 6. Running Packages
+## 6. Removing Packages
+
+All of these map to the same internal command:
+
+```bash
+mntpack remove owner/repo
+mntpack uninstall owner/repo
+mntpack rm mytool
+mntpack unsync mytool
+```
+
+Behavior:
+
+- accepts package name (`mytool`) or repo form (`owner/repo`, URL, or default-owner shorthand),
+- removes installed package files and global shim(s),
+- removes cloned repo directory when no installed packages still use that repo.
+
+## 7. Running Packages
 
 Run directly:
 
@@ -104,7 +125,7 @@ mntpack run mytool -- --flag value
 
 If `autoUpdateOnRun` is enabled, `run` syncs before launching.
 
-## 7. Global Shims
+## 8. Global Shims
 
 Use `-g` to create a global shim:
 
@@ -121,7 +142,7 @@ Notes:
 - Rust projects use their Rust executable name for global shim naming.
 - Shims call `mntpack run <package>` when possible, so auto-update-on-run applies there too.
 
-## 8. Config
+## 9. Config
 
 Show full config:
 
@@ -164,7 +185,7 @@ Important config keys:
 - `paths.cmake`
 - `paths.make`
 
-## 9. Project Type Detection
+## 10. Project Type Detection
 
 `mntpack` uses installer drivers:
 
@@ -174,7 +195,7 @@ Important config keys:
 - C/C++: `CMakeLists.txt` or `Makefile`/`makefile`
 - Generic: fallback with `mntpack.json` run/bin
 
-## 10. `mntpack.json` Guide
+## 11. `mntpack.json` Guide
 
 `mntpack.json` is optional, but recommended for non-trivial packages.
 
@@ -266,7 +287,7 @@ Example with optional build:
 
 `bin` path is still accepted for binary-style installs, but `run` is preferred for command-driven launchers.
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 Check tools:
 
@@ -278,7 +299,7 @@ If a tool is missing, set the matching config path key to the right executable p
 
 If shims are not found in your shell, ensure `<MNTPACK_HOME>/bin` is on PATH and open a new terminal.
 
-## 12. Files and Folders
+## 13. Files and Folders
 
 Default root:
 

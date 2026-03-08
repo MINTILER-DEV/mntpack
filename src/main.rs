@@ -34,6 +34,7 @@ async fn main() -> Result<()> {
             )
             .await?
         }
+        Commands::Remove { repo } => commands::remove::execute(&runtime, &repo)?,
         Commands::Run { package, args } => {
             commands::run::execute(&runtime, &package, &args).await?
         }

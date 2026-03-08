@@ -1,5 +1,18 @@
 # Release Notes
 
+## 0.1.6 - 2026-03-08
+
+### Added
+- New uninstall command with aliases:
+  - `remove`
+  - `uninstall`
+  - `rm`
+  - `unsync`
+
+### Changed
+- All uninstall aliases now map to the same internal command pipeline.
+- Uninstall now removes package files, cleans related global shim files, and prunes cloned repo directories when no installed packages still reference that repo.
+
 ## 0.1.5 - 2026-03-07
 
 ### Added
