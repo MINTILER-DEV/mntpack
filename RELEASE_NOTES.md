@@ -1,5 +1,12 @@
 # Release Notes
 
+## 0.2.1 - 2026-03-08
+
+### Changed
+- Repository checkouts under `repos/` now use git linked worktrees backed by bare mirrors in `cache/git/*.git` instead of full local clones.
+- Existing legacy full-clone repo folders are auto-migrated to mirror-backed worktrees during sync.
+- Sync recovery now recreates broken repo checkouts as worktrees and prunes stale worktree metadata.
+
 ## 0.2.0 - 2026-03-08
 
 ### Added

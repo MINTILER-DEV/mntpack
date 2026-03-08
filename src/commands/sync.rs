@@ -96,7 +96,13 @@ pub async fn sync_package_internal(
     let repo_dir = runtime.paths.repo_dir(&resolved.key);
     let package_dir = runtime.paths.package_dir(&package_name);
 
-    sync_repo(&resolved, &repo_dir, &runtime.paths.cache_git, version)?;
+    sync_repo(
+        &resolved,
+        &repo_dir,
+        &runtime.paths.cache_git,
+        &runtime.config.paths.git,
+        version,
+    )?;
     validate_tag_when_release_selected(&repo_dir, version, release_asset)?;
     let commit = head_commit_short(&repo_dir).ok();
     let manifest = Manifest::load(&repo_dir)?;

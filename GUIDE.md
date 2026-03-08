@@ -367,3 +367,5 @@ cache/git/
 cache/exec/
 bin/
 ```
+
+`repos/*` entries are mirror-backed git worktrees sourced from `cache/git/*.git`.

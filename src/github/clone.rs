@@ -1,4 +1,4 @@
-use std::{fs, path::Path};
+use std::{fs, path::Path, process::Command};
 
 use anyhow::{Context, Result, bail};
 use git2::{
@@ -12,11 +12,19 @@ pub fn sync_repo(
     resolved: &ResolvedRepo,
     repo_dir: &Path,
     cache_git_dir: &Path,
+    git_bin: &str,
     version: Option<&str>,
 ) -> Result<()> {
     let mirror_dir = ensure_bare_mirror(resolved, cache_git_dir)?;
     if !repo_dir.exists() {
-        clone_repo(mirror_dir.to_string_lossy().as_ref(), repo_dir)?;
+        add_worktree(git_bin, &mirror_dir, repo_dir)?;
+    } else if !is_linked_worktree(repo_dir) {
+        eprintln!(
+            "detected legacy full clone at {}. migrating to mirror-backed worktree...",
+            repo_dir.display()
+        );
+        remove_checkout(git_bin, &mirror_dir, repo_dir)?;
+        add_worktree(git_bin, &mirror_dir, repo_dir)?;
     } else {
         fetch_repo(repo_dir)?;
     }
@@ -29,9 +37,8 @@ pub fn sync_repo(
 
     if let Err(err) = operation {
         eprintln!("sync failed for {}: {err}. recloning...", resolved.key);
-        fs::remove_dir_all(repo_dir)
-            .with_context(|| format!("failed to remove repo dir {}", repo_dir.display()))?;
-        clone_repo(mirror_dir.to_string_lossy().as_ref(), repo_dir)?;
+        remove_checkout(git_bin, &mirror_dir, repo_dir)?;
+        add_worktree(git_bin, &mirror_dir, repo_dir)?;
         if let Some(reference) = version {
             checkout_version(repo_dir, reference)?;
         } else {
@@ -74,14 +81,76 @@ fn clone_bare_repo(clone_url: &str, repo_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn clone_repo(clone_url: &str, repo_dir: &Path) -> Result<()> {
+fn add_worktree(git_bin: &str, mirror_dir: &Path, repo_dir: &Path) -> Result<()> {
     if let Some(parent) = repo_dir.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("failed to create {}", parent.display()))?;
     }
-    Repository::clone(clone_url, repo_dir)
-        .with_context(|| format!("failed to clone {clone_url} into {}", repo_dir.display()))?;
+    if repo_dir.exists() {
+        remove_checkout(git_bin, mirror_dir, repo_dir)?;
+    }
+
+    let mirror_repo = Repository::open_bare(mirror_dir)
+        .with_context(|| format!("failed to open mirror {}", mirror_dir.display()))?;
+    let default_branch = resolve_default_branch(&mirror_repo)?;
+    let git_dir_arg = format!("--git-dir={}", mirror_dir.display());
+    let repo_dir_str = repo_dir.to_string_lossy().to_string();
+    let status = Command::new(git_bin)
+        .args([
+            git_dir_arg.as_str(),
+            "worktree",
+            "add",
+            "--force",
+            repo_dir_str.as_str(),
+            default_branch.as_str(),
+        ])
+        .status()
+        .with_context(|| {
+            format!(
+                "failed to run '{} worktree add' for {}",
+                git_bin,
+                repo_dir.display()
+            )
+        })?;
+    if !status.success() {
+        bail!(
+            "failed to add git worktree at {} (exit code {:?})",
+            repo_dir.display(),
+            status.code()
+        );
+    }
     Ok(())
+}
+
+fn remove_checkout(git_bin: &str, mirror_dir: &Path, repo_dir: &Path) -> Result<()> {
+    if repo_dir.exists() && is_linked_worktree(repo_dir) {
+        let git_dir_arg = format!("--git-dir={}", mirror_dir.display());
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        let _ = Command::new(git_bin)
+            .args([
+                git_dir_arg.as_str(),
+                "worktree",
+                "remove",
+                "--force",
+                repo_dir_str.as_str(),
+            ])
+            .status();
+    }
+
+    if repo_dir.exists() {
+        fs::remove_dir_all(repo_dir)
+            .with_context(|| format!("failed to remove repo dir {}", repo_dir.display()))?;
+    }
+
+    let git_dir_arg = format!("--git-dir={}", mirror_dir.display());
+    let _ = Command::new(git_bin)
+        .args([git_dir_arg.as_str(), "worktree", "prune", "--expire", "now"])
+        .status();
+    Ok(())
+}
+
+fn is_linked_worktree(repo_dir: &Path) -> bool {
+    repo_dir.join(".git").is_file()
 }
 
 fn sync_default_branch(repo_dir: &Path) -> Result<()> {

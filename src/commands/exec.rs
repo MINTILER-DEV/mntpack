@@ -34,7 +34,13 @@ pub async fn execute(runtime: &RuntimeContext, repo_input: &str, args: &[String]
     fs::create_dir_all(&package_dir)
         .with_context(|| format!("failed to create {}", package_dir.display()))?;
 
-    sync_repo(&resolved, &repo_dir, &runtime.paths.cache_git, None)?;
+    sync_repo(
+        &resolved,
+        &repo_dir,
+        &runtime.paths.cache_git,
+        &runtime.config.paths.git,
+        None,
+    )?;
     let manifest = Manifest::load(&repo_dir)?;
     let run_command = manifest
         .as_ref()

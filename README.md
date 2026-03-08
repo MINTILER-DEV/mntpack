@@ -145,6 +145,7 @@ mntpack run scalf
 - `sync` is clone-first and marks packages for lazy preparation/build when needed.
 - `run` prepares/builds packages on-demand when artifacts are missing.
 - Git mirror cache is kept under `<MNTPACK_HOME>/cache/git`.
+- `repos/*` checkouts are linked git worktrees backed by those mirrors.
 
 ## Manifest (`mntpack.json`)
 
