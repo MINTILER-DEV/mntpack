@@ -1,5 +1,19 @@
 # Release Notes
 
+## 0.3.3 - 2026-03-08
+
+### Fixed
+- Fixed Windows self-update failure for managed `mntpack` when running from `packages/mntpack/payload/mntpack`:
+  - syncing `mntpack` no longer tries to relink/remove `packages/mntpack/payload` (which can be file-locked by the running process),
+  - managed `mntpack` now keeps execution targeting the store binary path for self-update safety.
+
+## 0.3.2 - 2026-03-08
+
+### Fixed
+- Fixed stale self-update behavior for managed `mntpack` package:
+  - `sync/update` for `MINTILER-DEV/mntpack` now stages the currently running `mntpack` executable into the managed package/store, instead of leaving an old payload binary in place.
+- This prevents reintroducing old shim behavior when users sync with a newer local build (`cargo run --release ...`) but still execute the old installed payload binary.
+
 ## 0.3.1 - 2026-03-08
 
 ### Fixed

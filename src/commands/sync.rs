@@ -154,6 +154,29 @@ pub async fn sync_package_internal(
             }
         }
     }
+    if is_special_repo(&resolved.owner, &resolved.repo)
+        && run_command.is_none()
+        && installed_binary.is_none()
+    {
+        fs::create_dir_all(&package_dir)
+            .with_context(|| format!("failed to create {}", package_dir.display()))?;
+        let staged = stage_current_executable(&package_dir)?;
+        let stored = persist_binary_to_store(
+            runtime,
+            &resolved.repo,
+            version
+                .or(manifest.as_ref().and_then(|m| m.version.as_deref()))
+                .or(commit.as_deref()),
+            commit.as_deref(),
+            &package_dir,
+            &package_name,
+            &staged,
+        )?;
+        installed_binary = Some(stored.binary_path);
+        binary_rel_path = Some(stored.binary_rel_path);
+        store_entry = Some(stored.store_entry);
+        build_pending = false;
+    }
 
     let shim_name = preferred_shim_name.unwrap_or_else(|| package_name.clone());
     if effective_global {
@@ -389,7 +412,8 @@ fn persist_binary_to_store(
         .map(|name| name.to_string())
         .unwrap_or(fallback_name);
     let stored_binary = store_dir.join(&file_name);
-    if !stored_binary.exists() {
+    let should_overwrite = package_name.eq_ignore_ascii_case(SPECIAL_PACKAGE_NAME);
+    if should_overwrite || !stored_binary.exists() {
         fs::copy(source_binary, &stored_binary).with_context(|| {
             format!(
                 "failed to copy binary {} -> {}",
@@ -404,6 +428,37 @@ fn persist_binary_to_store(
             perms.set_mode(0o755);
             fs::set_permissions(&stored_binary, perms)?;
         }
+    }
+
+    if package_name.eq_ignore_ascii_case(SPECIAL_PACKAGE_NAME) {
+        let payload_dir = package_dir.join(PAYLOAD_LINK_NAME);
+        let running_from_payload = std::env::current_exe()
+            .ok()
+            .map(|exe| exe.starts_with(&payload_dir))
+            .unwrap_or(false);
+        if !running_from_payload {
+            if let Err(err) = link_store_payload(package_dir, &store_dir) {
+                eprintln!("warning: unable to relink mntpack payload directory: {err}");
+            }
+        }
+
+        let rel = if payload_dir.exists() {
+            format!("{PAYLOAD_LINK_NAME}/{file_name}")
+        } else {
+            stored_binary
+                .strip_prefix(&runtime.paths.root)
+                .unwrap_or(&stored_binary)
+                .to_string_lossy()
+                .replace('\\', "/")
+        };
+        if source_binary.starts_with(package_dir) && source_binary != stored_binary {
+            let _ = fs::remove_file(source_binary);
+        }
+        return Ok(StorePlacement {
+            binary_path: stored_binary,
+            binary_rel_path: rel,
+            store_entry,
+        });
     }
 
     link_store_payload(package_dir, &store_dir)?;
@@ -489,6 +544,36 @@ fn remove_path(path: &Path) -> Result<()> {
         fs::remove_dir_all(path).with_context(|| format!("failed to remove {}", path.display()))?;
     }
     Ok(())
+}
+
+fn stage_current_executable(package_dir: &Path) -> Result<PathBuf> {
+    let current_exe = std::env::current_exe().context("failed to resolve current executable")?;
+    if !current_exe.exists() {
+        bail!("current executable not found at {}", current_exe.display());
+    }
+    let file_name = if cfg!(windows) {
+        "mntpack.exe".to_string()
+    } else {
+        "mntpack".to_string()
+    };
+    let destination = package_dir.join(file_name);
+    fs::copy(&current_exe, &destination).with_context(|| {
+        format!(
+            "failed to stage current executable {} -> {}",
+            current_exe.display(),
+            destination.display()
+        )
+    })?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&destination)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&destination, perms)?;
+    }
+
+    Ok(destination)
 }
 
 fn sanitize_store_component(input: &str) -> String {
