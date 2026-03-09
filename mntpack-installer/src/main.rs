@@ -228,7 +228,7 @@ fn create_mntpack_shim(root: &Path, bin_dir: &Path, binary_name: &str) -> Result
         let shim_path = bin_dir.join("mntpack.cmd");
         let default_root = root.to_string_lossy();
         let content = format!(
-            "@echo off\r\nset \"{MNTPACK_HOME_ENV}=%{MNTPACK_HOME_ENV}%\"\r\nif \"%{MNTPACK_HOME_ENV}%\"==\"\" set \"{MNTPACK_HOME_ENV}={default_root}\"\r\n\"%{MNTPACK_HOME_ENV}%\\packages\\mntpack\\payload\\{binary_name}\" %*\r\n"
+            "@echo off\r\nsetlocal EnableExtensions EnableDelayedExpansion\r\nset \"{MNTPACK_HOME_ENV}=%{MNTPACK_HOME_ENV}%\"\r\nif \"%{MNTPACK_HOME_ENV}%\"==\"\" set \"{MNTPACK_HOME_ENV}={default_root}\"\r\n\"%{MNTPACK_HOME_ENV}%\\packages\\mntpack\\payload\\{binary_name}\" %*\r\nexit /b !ERRORLEVEL!\r\n"
         );
         fs::write(&shim_path, content)
             .with_context(|| format!("failed to write {}", shim_path.display()))?;

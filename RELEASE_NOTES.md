@@ -1,5 +1,12 @@
 # Release Notes
 
+## 0.3.6 - 2026-03-08
+
+### Fixed
+- Fixed Windows shim exit-code propagation for batch shims (`*.cmd`) where `%errorlevel%` could be captured from earlier commands (for example `findstr`) and incorrectly return `1`.
+- Windows shim templates now use delayed expansion (`!ERRORLEVEL!`) and `call` for batch-to-batch invocation to ensure correct return codes.
+- This fixes cases like `php-asm` exiting with code `1` even when `mntpack run php-asm` succeeds.
+
 ## 0.3.5 - 2026-03-08
 
 ### Fixed

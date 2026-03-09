@@ -30,18 +30,18 @@ pub fn create_shim(
             .as_ref()
             .map(|path| {
                 format!(
-                    "\"%{MNTPACK_HOME_ENV}%\\{}\" %*\r\nexit /b %errorlevel%\r\n",
+                    "\"%{MNTPACK_HOME_ENV}%\\{}\" %*\r\nexit /b !ERRORLEVEL!\r\n",
                     path.to_string_lossy().replace('/', "\\")
                 )
             })
             .unwrap_or_else(|| {
                 format!(
-                    "if exist \"%MNTPACK_CMD%\" (\r\n  \"%MNTPACK_CMD%\" run \"{package_name}\" %*\r\n  exit /b %errorlevel%\r\n)\r\necho mntpack: package has no direct binary fallback.>&2\r\nexit /b 1\r\n"
+                    "if exist \"%MNTPACK_CMD%\" (\r\n  call \"%MNTPACK_CMD%\" run \"{package_name}\" %*\r\n  exit /b !ERRORLEVEL!\r\n)\r\necho mntpack: package has no direct binary fallback.>&2\r\nexit /b 1\r\n"
                 )
             });
         let default_root = runtime.paths.root.to_string_lossy();
         let content = format!(
-            "@echo off\r\nset \"{MNTPACK_HOME_ENV}=%{MNTPACK_HOME_ENV}%\"\r\nif \"%{MNTPACK_HOME_ENV}%\"==\"\" set \"{MNTPACK_HOME_ENV}={default_root}\"\r\nset \"MNTPACK_CMD=%{MNTPACK_HOME_ENV}%\\bin\\mntpack.exe\"\r\nif not exist \"%MNTPACK_CMD%\" set \"MNTPACK_CMD=%{MNTPACK_HOME_ENV}%\\bin\\mntpack.cmd\"\r\nset \"MNTPACK_CONFIG=%{MNTPACK_HOME_ENV}%\\config.json\"\r\nset \"MNTPACK_AUTO_UPDATE=0\"\r\nif exist \"%MNTPACK_CONFIG%\" (\r\n  findstr /R /I /C:\"\\\"autoUpdateOnRun\\\"[ ]*:[ ]*true\" \"%MNTPACK_CONFIG%\" >nul\r\n  if not errorlevel 1 set \"MNTPACK_AUTO_UPDATE=1\"\r\n)\r\nif \"%MNTPACK_AUTO_UPDATE%\"==\"1\" (\r\n  if exist \"%MNTPACK_CMD%\" (\r\n    \"%MNTPACK_CMD%\" run \"{package_name}\" %*\r\n    exit /b %errorlevel%\r\n  )\r\n)\r\n{direct_command}"
+            "@echo off\r\nsetlocal EnableExtensions EnableDelayedExpansion\r\nset \"{MNTPACK_HOME_ENV}=%{MNTPACK_HOME_ENV}%\"\r\nif \"%{MNTPACK_HOME_ENV}%\"==\"\" set \"{MNTPACK_HOME_ENV}={default_root}\"\r\nset \"MNTPACK_CMD=%{MNTPACK_HOME_ENV}%\\bin\\mntpack.exe\"\r\nif not exist \"%MNTPACK_CMD%\" set \"MNTPACK_CMD=%{MNTPACK_HOME_ENV}%\\bin\\mntpack.cmd\"\r\nset \"MNTPACK_CONFIG=%{MNTPACK_HOME_ENV}%\\config.json\"\r\nset \"MNTPACK_AUTO_UPDATE=0\"\r\nif exist \"%MNTPACK_CONFIG%\" (\r\n  findstr /R /I /C:\"\\\"autoUpdateOnRun\\\"[ ]*:[ ]*true\" \"%MNTPACK_CONFIG%\" >nul\r\n  if not errorlevel 1 set \"MNTPACK_AUTO_UPDATE=1\"\r\n)\r\nif \"%MNTPACK_AUTO_UPDATE%\"==\"1\" (\r\n  if exist \"%MNTPACK_CMD%\" (\r\n    call \"%MNTPACK_CMD%\" run \"{package_name}\" %*\r\n    exit /b !ERRORLEVEL!\r\n  )\r\n)\r\n{direct_command}"
         );
         fs::write(&shim_path, content)
             .with_context(|| format!("failed to write shim {}", shim_path.display()))?;
@@ -94,7 +94,7 @@ fn create_mntpack_shim(
             .unwrap_or(default_target);
         let default_root = runtime.paths.root.to_string_lossy();
         let content = format!(
-            "@echo off\r\nset \"{MNTPACK_HOME_ENV}=%{MNTPACK_HOME_ENV}%\"\r\nif \"%{MNTPACK_HOME_ENV}%\"==\"\" set \"{MNTPACK_HOME_ENV}={default_root}\"\r\nset \"MNTPACK_SELF=%{MNTPACK_HOME_ENV}%\\{target}\"\r\nif exist \"%MNTPACK_SELF%\" (\r\n  \"%MNTPACK_SELF%\" %*\r\n  exit /b %errorlevel%\r\n)\r\necho mntpack: managed binary not found at %MNTPACK_SELF%.>&2\r\nexit /b 1\r\n"
+            "@echo off\r\nsetlocal EnableExtensions EnableDelayedExpansion\r\nset \"{MNTPACK_HOME_ENV}=%{MNTPACK_HOME_ENV}%\"\r\nif \"%{MNTPACK_HOME_ENV}%\"==\"\" set \"{MNTPACK_HOME_ENV}={default_root}\"\r\nset \"MNTPACK_SELF=%{MNTPACK_HOME_ENV}%\\{target}\"\r\nif exist \"%MNTPACK_SELF%\" (\r\n  \"%MNTPACK_SELF%\" %*\r\n  exit /b !ERRORLEVEL!\r\n)\r\necho mntpack: managed binary not found at %MNTPACK_SELF%.>&2\r\nexit /b 1\r\n"
         );
         fs::write(&shim_path, content)
             .with_context(|| format!("failed to write shim {}", shim_path.display()))?;
