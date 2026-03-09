@@ -37,7 +37,7 @@ pub fn create_shim(
             });
         let default_root = runtime.paths.root.to_string_lossy();
         let content = format!(
-            "@echo off\r\nset \"{MNTPACK_HOME_ENV}=%{MNTPACK_HOME_ENV}%\"\r\nif \"%{MNTPACK_HOME_ENV}%\"==\"\" set \"{MNTPACK_HOME_ENV}={default_root}\"\r\nset \"MNTPACK_CMD=%{MNTPACK_HOME_ENV}%\\bin\\mntpack.exe\"\r\nset \"MNTPACK_CONFIG=%{MNTPACK_HOME_ENV}%\\config.json\"\r\nset \"MNTPACK_AUTO_UPDATE=0\"\r\nif exist \"%MNTPACK_CONFIG%\" (\r\n  findstr /R /I /C:\"\\\"autoUpdateOnRun\\\"[ ]*:[ ]*true\" \"%MNTPACK_CONFIG%\" >nul\r\n  if not errorlevel 1 set \"MNTPACK_AUTO_UPDATE=1\"\r\n)\r\nif \"%MNTPACK_AUTO_UPDATE%\"==\"1\" (\r\n  if exist \"%MNTPACK_CMD%\" (\r\n    \"%MNTPACK_CMD%\" run \"{package_name}\" %*\r\n    exit /b %errorlevel%\r\n  )\r\n)\r\n{direct_command}"
+            "@echo off\r\nset \"{MNTPACK_HOME_ENV}=%{MNTPACK_HOME_ENV}%\"\r\nif \"%{MNTPACK_HOME_ENV}%\"==\"\" set \"{MNTPACK_HOME_ENV}={default_root}\"\r\nset \"MNTPACK_CMD=%{MNTPACK_HOME_ENV}%\\bin\\mntpack.exe\"\r\nif not exist \"%MNTPACK_CMD%\" set \"MNTPACK_CMD=%{MNTPACK_HOME_ENV}%\\bin\\mntpack.cmd\"\r\nset \"MNTPACK_CONFIG=%{MNTPACK_HOME_ENV}%\\config.json\"\r\nset \"MNTPACK_AUTO_UPDATE=0\"\r\nif exist \"%MNTPACK_CONFIG%\" (\r\n  findstr /R /I /C:\"\\\"autoUpdateOnRun\\\"[ ]*:[ ]*true\" \"%MNTPACK_CONFIG%\" >nul\r\n  if not errorlevel 1 set \"MNTPACK_AUTO_UPDATE=1\"\r\n)\r\nif \"%MNTPACK_AUTO_UPDATE%\"==\"1\" (\r\n  if exist \"%MNTPACK_CMD%\" (\r\n    \"%MNTPACK_CMD%\" run \"{package_name}\" %*\r\n    exit /b %errorlevel%\r\n  )\r\n)\r\n{direct_command}"
         );
         fs::write(&shim_path, content)
             .with_context(|| format!("failed to write shim {}", shim_path.display()))?;

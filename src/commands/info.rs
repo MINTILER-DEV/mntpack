@@ -15,7 +15,7 @@ pub fn execute(runtime: &RuntimeContext, package: &str) -> Result<()> {
     let install_path = runtime.paths.package_dir(&record.package_name);
     let repo_path = runtime
         .paths
-        .repo_dir(&crate::config::repo_key(&record.owner, &record.repo));
+        .repo_dir_existing_or_new(&record.owner, &record.repo);
     let shim_path = resolve_shim_path(runtime, &record);
 
     println!("Package: {}", record.package_name);

@@ -31,26 +31,60 @@ fn clean_repos(runtime: &RuntimeContext) -> Result<()> {
         .iter()
         .map(|record| crate::config::repo_key(&record.owner, &record.repo))
         .collect();
+    let used_legacy: HashSet<String> = records
+        .iter()
+        .map(|record| crate::config::repo_key_legacy(&record.owner, &record.repo))
+        .collect();
 
     if !runtime.paths.repos.exists() {
         return Ok(());
     }
 
     let mut removed = 0usize;
-    for entry in fs::read_dir(&runtime.paths.repos)
+    for owner_entry in fs::read_dir(&runtime.paths.repos)
         .with_context(|| format!("failed to read {}", runtime.paths.repos.display()))?
     {
-        let entry = entry?;
-        if !entry.file_type()?.is_dir() {
+        let owner_entry = owner_entry?;
+        if !owner_entry.file_type()?.is_dir() {
             continue;
         }
-        let key = entry.file_name().to_string_lossy().to_string();
-        if used.contains(&key) {
+
+        let owner_name = owner_entry.file_name().to_string_lossy().to_string();
+        let owner_path = owner_entry.path();
+        if owner_name.contains("__") {
+            if !used.contains(&owner_name) && !used_legacy.contains(&owner_name) {
+                fs::remove_dir_all(&owner_path)
+                    .with_context(|| format!("failed to remove {}", owner_path.display()))?;
+                removed += 1;
+            }
             continue;
         }
-        fs::remove_dir_all(entry.path())
-            .with_context(|| format!("failed to remove {}", entry.path().display()))?;
-        removed += 1;
+
+        for repo_entry in fs::read_dir(&owner_path)
+            .with_context(|| format!("failed to read {}", owner_path.display()))?
+        {
+            let repo_entry = repo_entry?;
+            if !repo_entry.file_type()?.is_dir() {
+                continue;
+            }
+            let repo_name = repo_entry.file_name().to_string_lossy().to_string();
+            let key = format!("{owner_name}/{repo_name}");
+            if used.contains(&key) {
+                continue;
+            }
+            fs::remove_dir_all(repo_entry.path())
+                .with_context(|| format!("failed to remove {}", repo_entry.path().display()))?;
+            removed += 1;
+        }
+
+        let owner_empty = fs::read_dir(&owner_path)
+            .with_context(|| format!("failed to read {}", owner_path.display()))?
+            .next()
+            .is_none();
+        if owner_empty {
+            fs::remove_dir_all(&owner_path)
+                .with_context(|| format!("failed to remove {}", owner_path.display()))?;
+        }
     }
 
     println!("removed {removed} unused repo clone(s)");

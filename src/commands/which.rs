@@ -53,7 +53,7 @@ pub fn execute(runtime: &RuntimeContext, command: &str) -> Result<()> {
         "Repo: {}",
         runtime
             .paths
-            .repo_dir(&crate::config::repo_key(&record.owner, &record.repo))
+            .repo_dir_existing_or_new(&record.owner, &record.repo)
             .display()
     );
     Ok(())

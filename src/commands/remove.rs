@@ -14,6 +14,10 @@ use crate::{
     },
 };
 
+const SPECIAL_PACKAGE_NAME: &str = "mntpack";
+const SPECIAL_OWNER: &str = "MINTILER-DEV";
+const SPECIAL_REPO: &str = "mntpack";
+
 pub fn execute(runtime: &RuntimeContext, input: &str) -> Result<()> {
     let all_records = load_all_records(&runtime.paths.packages)?;
     if all_records.is_empty() {
@@ -23,6 +27,12 @@ pub fn execute(runtime: &RuntimeContext, input: &str) -> Result<()> {
     let targets = resolve_targets(runtime, input, &all_records)?;
     if targets.is_empty() {
         bail!("package or repository '{input}' is not installed");
+    }
+    if targets.iter().any(is_protected_mntpack) {
+        bail!(
+            "package '{}' is protected and cannot be removed",
+            SPECIAL_PACKAGE_NAME
+        );
     }
 
     for record in &targets {
@@ -160,12 +170,34 @@ fn cleanup_repo_directories(runtime: &RuntimeContext, removed: &[PackageRecord])
             if !repo_keys.contains(&repo_key) {
                 continue;
             }
-            let repo_dir = runtime.paths.repo_dir(&repo_key);
+            let repo_dir = runtime
+                .paths
+                .repo_dir_from_parts(&record.owner, &record.repo);
             if repo_dir.exists() {
                 fs::remove_dir_all(&repo_dir)
                     .with_context(|| format!("failed to remove {}", repo_dir.display()))?;
+            } else {
+                let legacy = runtime
+                    .paths
+                    .legacy_repo_dir_from_parts(&record.owner, &record.repo);
+                if legacy.exists() {
+                    fs::remove_dir_all(&legacy)
+                        .with_context(|| format!("failed to remove {}", legacy.display()))?;
+                }
             }
             repo_keys.remove(&repo_key);
+
+            let owner_dir = runtime.paths.repos.join(&record.owner);
+            if owner_dir.exists() {
+                let is_empty = fs::read_dir(&owner_dir)
+                    .with_context(|| format!("failed to read {}", owner_dir.display()))?
+                    .next()
+                    .is_none();
+                if is_empty {
+                    fs::remove_dir_all(&owner_dir)
+                        .with_context(|| format!("failed to remove {}", owner_dir.display()))?;
+                }
+            }
         }
     }
 
@@ -188,4 +220,12 @@ fn cleanup_repo_directories(runtime: &RuntimeContext, removed: &[PackageRecord])
     }
 
     Ok(())
+}
+
+fn is_protected_mntpack(record: &PackageRecord) -> bool {
+    record
+        .package_name
+        .eq_ignore_ascii_case(SPECIAL_PACKAGE_NAME)
+        && record.owner.eq_ignore_ascii_case(SPECIAL_OWNER)
+        && record.repo.eq_ignore_ascii_case(SPECIAL_REPO)
 }

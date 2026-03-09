@@ -73,7 +73,9 @@ Installer behavior:
 
 - Prompts for install base directory (default: home directory)
 - Creates `<base>/.mntpack/{repos,packages,cache,bin}`
-- Installs `mntpack` into `.mntpack/bin`
+- Installs `mntpack` as managed package `packages/mntpack`
+- Places payload in `store/mntpack/<commit-or-payload-id>`
+- Creates `mntpack` shim in `.mntpack/bin`
 - Adds `.mntpack/bin` to PATH (if missing)
 - Sets `MNTPACK_HOME` for custom install root support
 
@@ -129,6 +131,9 @@ mntpack run scalf
 - If a different repo already uses that name:
   - `sync` prompts for a custom name
 - You can always set an explicit name with `--name`
+- `mntpack` is a protected reserved package name:
+  - only `MINTILER-DEV/mntpack` can use package name `mntpack`
+  - the `mntpack` package cannot be removed via `remove`/`uninstall`/`rm`/`unsync`
 
 ## Global Shims
 
@@ -142,10 +147,11 @@ mntpack run scalf
 ## Store And Lazy Build
 
 - Binaries are shared in `<MNTPACK_HOME>/store` and package folders link to them.
+- Store layout is `<MNTPACK_HOME>/store/<repo>/<version-or-commit>/...`.
 - `sync` is clone-first and marks packages for lazy preparation/build when needed.
 - `run` prepares/builds packages on-demand when artifacts are missing.
 - Git mirror cache is kept under `<MNTPACK_HOME>/cache/git`.
-- `repos/*` checkouts are linked git worktrees backed by those mirrors.
+- `repos/<owner>/<repo>` checkouts are linked git worktrees backed by those mirrors.
 
 ## Manifest (`mntpack.json`)
 

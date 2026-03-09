@@ -79,8 +79,24 @@ impl AppPaths {
         self.packages.join(package_name)
     }
 
-    pub fn repo_dir(&self, repo_key: &str) -> PathBuf {
-        self.repos.join(repo_key)
+    pub fn repo_dir_from_parts(&self, owner: &str, repo: &str) -> PathBuf {
+        self.repos.join(owner).join(repo)
+    }
+
+    pub fn legacy_repo_dir_from_parts(&self, owner: &str, repo: &str) -> PathBuf {
+        self.repos.join(repo_key_legacy(owner, repo))
+    }
+
+    pub fn repo_dir_existing_or_new(&self, owner: &str, repo: &str) -> PathBuf {
+        let preferred = self.repo_dir_from_parts(owner, repo);
+        if preferred.exists() {
+            return preferred;
+        }
+        let legacy = self.legacy_repo_dir_from_parts(owner, repo);
+        if legacy.exists() {
+            return legacy;
+        }
+        preferred
     }
 }
 
@@ -166,6 +182,10 @@ fn resolve_root_path() -> Result<PathBuf> {
 }
 
 pub fn repo_key(owner: &str, repo: &str) -> String {
+    format!("{owner}/{repo}")
+}
+
+pub fn repo_key_legacy(owner: &str, repo: &str) -> String {
     format!("{owner}__{repo}")
 }
 

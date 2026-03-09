@@ -16,7 +16,7 @@ pub fn execute(runtime: &RuntimeContext) -> Result<()> {
     for record in records {
         let repo_dir = runtime
             .paths
-            .repo_dir(&crate::config::repo_key(&record.owner, &record.repo));
+            .repo_dir_existing_or_new(&record.owner, &record.repo);
         if !repo_dir.exists() {
             println!("{}\trepo missing", record.package_name);
             continue;

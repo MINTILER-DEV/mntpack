@@ -16,7 +16,9 @@ The installer:
 
 - asks for install base directory (default: home directory),
 - creates `.mntpack` folders,
-- installs `mntpack` into `.mntpack/bin`,
+- installs `mntpack` as package `packages/mntpack`,
+- stores mntpack payload in `store/mntpack/<commit-or-payload-id>`,
+- creates `mntpack` shim in `.mntpack/bin`,
 - sets PATH and `MNTPACK_HOME`.
 
 ## 2. Core Commands
@@ -80,6 +82,7 @@ Behavior:
 - if a name is already used by a different installed package, `mntpack` asks for a custom name,
 - names are treated as occupied only when install succeeds (record exists),
 - if `sync` input matches an already-installed package name, `mntpack` updates that package.
+- `mntpack` is a protected package name (reserved for `MINTILER-DEV/mntpack` only).
 
 ## 5. Updating
 
@@ -369,3 +372,4 @@ bin/
 ```
 
 `repos/*` entries are mirror-backed git worktrees sourced from `cache/git/*.git`.
+Current layout is `repos/<owner>/<repo>`.

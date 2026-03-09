@@ -33,6 +33,9 @@ use crate::{
 };
 
 const PAYLOAD_LINK_NAME: &str = "payload";
+const SPECIAL_PACKAGE_NAME: &str = "mntpack";
+const SPECIAL_OWNER: &str = "MINTILER-DEV";
+const SPECIAL_REPO: &str = "mntpack";
 
 pub async fn execute(
     runtime: &RuntimeContext,
@@ -93,8 +96,12 @@ pub async fn sync_package_internal(
     }
 
     let package_name = resolve_package_name(runtime, &resolved.owner, &resolved.repo, custom_name)?;
-    let repo_dir = runtime.paths.repo_dir(&resolved.key);
+    let repo_dir = runtime
+        .paths
+        .repo_dir_from_parts(&resolved.owner, &resolved.repo);
+    migrate_legacy_repo_layout(runtime, &resolved.owner, &resolved.repo, &repo_dir)?;
     let package_dir = runtime.paths.package_dir(&package_name);
+    let effective_global = global || is_special_repo(&resolved.owner, &resolved.repo);
 
     sync_repo(
         &resolved,
@@ -149,7 +156,7 @@ pub async fn sync_package_internal(
     }
 
     let shim_name = preferred_shim_name.unwrap_or_else(|| package_name.clone());
-    if global {
+    if effective_global {
         create_shim(
             runtime,
             &package_name,
@@ -178,7 +185,7 @@ pub async fn sync_package_internal(
         shim_name: Some(shim_name),
         store_entry,
         build_pending,
-        global,
+        global: effective_global,
     };
     save_record(&package_dir, &record)?;
 
@@ -217,8 +224,9 @@ async fn prepare_package(
     runtime: &RuntimeContext,
     mut record: PackageRecord,
 ) -> Result<PackageRecord> {
-    let repo_key = crate::config::repo_key(&record.owner, &record.repo);
-    let repo_dir = runtime.paths.repo_dir(&repo_key);
+    let repo_dir = runtime
+        .paths
+        .repo_dir_existing_or_new(&record.owner, &record.repo);
     if !repo_dir.exists() {
         bail!("repository directory not found at {}", repo_dir.display());
     }
@@ -359,12 +367,14 @@ fn persist_binary_to_store(
         .map(|v| v.to_string())
         .or_else(|| commit.map(|c| c.to_string()))
         .unwrap_or_else(|| "latest".to_string());
-    let store_entry = format!(
-        "{}@{}",
-        sanitize_store_component(repo_name),
-        sanitize_store_component(&label)
-    );
-    let store_dir = runtime.paths.store.join(&store_entry);
+    let repo_segment = sanitize_store_component(repo_name);
+    let version_segment = sanitize_store_component(&label);
+    let store_entry = format!("{repo_segment}/{version_segment}");
+    let store_dir = runtime
+        .paths
+        .store
+        .join(&repo_segment)
+        .join(&version_segment);
     fs::create_dir_all(&store_dir)
         .with_context(|| format!("failed to create {}", store_dir.display()))?;
 
@@ -550,6 +560,16 @@ fn resolve_package_name(
         .map(str::to_string)
         .unwrap_or_else(|| repo.to_string());
 
+    if desired.eq_ignore_ascii_case(SPECIAL_PACKAGE_NAME) && !is_special_repo(owner, repo) {
+        bail!("package name '{}' is reserved", SPECIAL_PACKAGE_NAME);
+    }
+    if is_special_repo(owner, repo) && !desired.eq_ignore_ascii_case(SPECIAL_PACKAGE_NAME) {
+        bail!(
+            "the official mntpack repository must use package name '{}'",
+            SPECIAL_PACKAGE_NAME
+        );
+    }
+
     if !is_conflicting_name(runtime, &desired, owner, repo)? {
         return Ok(desired);
     }
@@ -655,4 +675,33 @@ fn looks_like_commit_hash(input: &str) -> bool {
         return false;
     }
     input.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+fn is_special_repo(owner: &str, repo: &str) -> bool {
+    owner.eq_ignore_ascii_case(SPECIAL_OWNER) && repo.eq_ignore_ascii_case(SPECIAL_REPO)
+}
+
+fn migrate_legacy_repo_layout(
+    runtime: &RuntimeContext,
+    owner: &str,
+    repo: &str,
+    new_repo_dir: &Path,
+) -> Result<()> {
+    let legacy_repo_dir = runtime.paths.legacy_repo_dir_from_parts(owner, repo);
+    if !legacy_repo_dir.exists() || new_repo_dir.exists() {
+        return Ok(());
+    }
+
+    if let Some(parent) = new_repo_dir.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    fs::rename(&legacy_repo_dir, new_repo_dir).with_context(|| {
+        format!(
+            "failed to migrate legacy repo path {} -> {}",
+            legacy_repo_dir.display(),
+            new_repo_dir.display()
+        )
+    })?;
+    Ok(())
 }

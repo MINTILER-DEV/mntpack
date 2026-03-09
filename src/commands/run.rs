@@ -70,8 +70,9 @@ fn execute_run_command(
     base_command: &str,
     args: &[String],
 ) -> Result<()> {
-    let repo_key = crate::config::repo_key(&record.owner, &record.repo);
-    let repo_dir = runtime.paths.repo_dir(&repo_key);
+    let repo_dir = runtime
+        .paths
+        .repo_dir_existing_or_new(&record.owner, &record.repo);
     if !repo_dir.exists() {
         bail!(
             "repository directory not found for '{}'",

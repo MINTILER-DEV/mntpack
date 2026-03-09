@@ -1,5 +1,21 @@
 # Release Notes
 
+## 0.3.0 - 2026-03-08
+
+### Changed
+- Repo checkout layout now uses nested path structure:
+  - `repos/<owner>/<repo>`
+- Legacy repo path migration added:
+  - existing `repos/<owner>__<repo>` directories are moved to the nested layout on sync.
+- Store layout now uses nested repo/version path structure:
+  - `store/<repo>/<version-or-commit>/...`
+- Installer now installs `mntpack` as a managed package (`packages/mntpack`) with payload in `store/mntpack/<id>` and creates `mntpack` shim in `bin`.
+- Installer can bootstrap via an existing `mntpack` on PATH (`mntpack sync MINTILER-DEV/mntpack --name mntpack -g`) and falls back to embedded payload when unavailable.
+- `mntpack` package protections:
+  - package name `mntpack` is reserved for `MINTILER-DEV/mntpack`,
+  - managed `mntpack` package cannot be removed.
+- Shim runtime now falls back to `bin/mntpack.cmd` when `bin/mntpack.exe` is not present.
+
 ## 0.2.1 - 2026-03-08
 
 ### Changed
