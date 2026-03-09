@@ -41,6 +41,7 @@ pub enum Commands {
     Which {
         command: String,
     },
+    #[command(disable_help_flag = true)]
     Run {
         package: String,
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]

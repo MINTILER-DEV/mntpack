@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.4.4 - 2026-03-09
+
+### Fixed
+- `run` subcommand now disables clap's built-in `--help` flag, so package flags like `--help` are forwarded correctly even without explicit `--` separator.
+- This resolves launcher cases like `wtree --help` previously showing `mntpack run` help instead of package help.
+
 ## 0.4.3 - 2026-03-09
 
 ### Fixed
