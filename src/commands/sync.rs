@@ -172,24 +172,57 @@ pub async fn sync_package_internal(
         && run_command.is_none()
         && installed_binary.is_none()
     {
-        fs::create_dir_all(&package_dir)
-            .with_context(|| format!("failed to create {}", package_dir.display()))?;
-        let staged = stage_current_executable(&package_dir)?;
-        let stored = persist_binary_to_store(
-            runtime,
-            &resolved.repo,
-            version
-                .or(manifest.as_ref().and_then(|m| m.version.as_deref()))
-                .or(commit.as_deref()),
-            commit.as_deref(),
-            &package_dir,
-            &package_name,
-            &staged,
-        )?;
-        installed_binary = Some(stored.binary_path);
-        binary_rel_path = Some(stored.binary_rel_path);
-        store_entry = Some(stored.store_entry);
-        build_pending = false;
+        let runtime_driver = DriverRuntime { runtime };
+        let installer_ctx = InstallContext {
+            package_name: package_name.clone(),
+            repo_path: repo_dir.clone(),
+            package_dir: package_dir.clone(),
+            manifest: manifest.clone(),
+        };
+        match InstallerManager::new().install(&installer_ctx, &runtime_driver) {
+            Ok(result) => {
+                if let Some(binary) = result.binary_path {
+                    let stored = persist_binary_to_store(
+                        runtime,
+                        &resolved.repo,
+                        version
+                            .or(manifest.as_ref().and_then(|m| m.version.as_deref()))
+                            .or(commit.as_deref()),
+                        commit.as_deref(),
+                        &package_dir,
+                        &package_name,
+                        &binary,
+                    )?;
+                    installed_binary = Some(stored.binary_path);
+                    binary_rel_path = Some(stored.binary_rel_path);
+                    store_entry = Some(stored.store_entry);
+                    build_pending = false;
+                }
+            }
+            Err(err) => {
+                eprintln!(
+                    "warning: failed to rebuild managed mntpack from synced repo, falling back to current executable: {err}"
+                );
+                fs::create_dir_all(&package_dir)
+                    .with_context(|| format!("failed to create {}", package_dir.display()))?;
+                let staged = stage_current_executable(&package_dir)?;
+                let stored = persist_binary_to_store(
+                    runtime,
+                    &resolved.repo,
+                    version
+                        .or(manifest.as_ref().and_then(|m| m.version.as_deref()))
+                        .or(commit.as_deref()),
+                    commit.as_deref(),
+                    &package_dir,
+                    &package_name,
+                    &staged,
+                )?;
+                installed_binary = Some(stored.binary_path);
+                binary_rel_path = Some(stored.binary_rel_path);
+                store_entry = Some(stored.store_entry);
+                build_pending = false;
+            }
+        }
     }
 
     let shim_name = preferred_shim_name.unwrap_or_else(|| package_name.clone());

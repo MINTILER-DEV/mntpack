@@ -1,5 +1,14 @@
 # Release Notes
 
+## 0.4.1 - 2026-03-09
+
+### Fixed
+- Fixed managed self-sync behavior for `mntpack`:
+  - `mntpack sync mntpack` now rebuilds from the synced repository first and installs that built binary.
+  - previous behavior could restage the currently running old executable into the new store entry, causing `commit` to update while `mntpack -V` stayed on an older version.
+- Added fallback behavior:
+  - if rebuild fails, sync falls back to staging the current executable with a warning (so command availability is preserved).
+
 ## 0.4.0 - 2026-03-09
 
 ### Added
