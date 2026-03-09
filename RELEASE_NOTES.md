@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.4.3 - 2026-03-09
+
+### Fixed
+- `run` CLI argument parsing now accepts hyphen-prefixed package args directly (`--help`, etc.) via `allow_hyphen_values` on trailing args.
+- This prevents package flags from being interpreted as `mntpack run` help/options in launcher paths where separator forwarding may vary.
+
 ## 0.4.2 - 2026-03-09
 
 ### Fixed

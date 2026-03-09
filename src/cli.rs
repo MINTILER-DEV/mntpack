@@ -43,7 +43,7 @@ pub enum Commands {
     },
     Run {
         package: String,
-        #[arg(trailing_var_arg = true)]
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
     List {
