@@ -1,5 +1,29 @@
 # Release Notes
 
+## 0.4.0 - 2026-03-09
+
+### Added
+- New commands:
+  - `use <package> <version>` to switch active installed version by retargeting package metadata/shims to an existing store version.
+  - `upgrade [package]` to upgrade using GitHub release assets (`--release auto` flow) instead of commit-only update behavior.
+  - `reinstall <package>` with alias `resync` to remove and reinstall packages in one step.
+  - `search <query...>` to search GitHub repositories from the CLI.
+  - `inspect <owner/repo>` to inspect repository installability before install (project type, build/run/binary hints).
+- `sync` now has `install` alias (`mntpack install ...`).
+- `doctor --fix` / `-f` added for automatic remediation.
+- `list --global` / `-g` added to show shim mappings only (`shim -> package`).
+- `exec <tool>@<version> [args...]` added for running a specific installed version from store without switching active version.
+
+### Changed
+- `--release auto` now performs platform/arch asset matching automatically (for example Windows -> `win`, x64 -> `amd64`).
+- Explicit `-r/--release` now behaves as release-required: sync fails when no matching release asset is found.
+- Generic/no-manifest install fallback now auto-discovers binaries in common output paths:
+  - `target/release`, `bin`, `dist`, `build`, and repository root.
+- Driver pipeline now applies binary auto-discovery fallback when language drivers return no explicit binary and no command-run launcher is configured.
+
+### Fixed
+- GitHub release cache path generation now sanitizes `owner/repo` keys for Windows-safe cache filenames/paths.
+
 ## 0.3.6 - 2026-03-08
 
 ### Fixed

@@ -14,6 +14,7 @@ It can clone/pull repositories, install from releases or source, create global s
 - Sync packages from GitHub using shorthand (`repo`), `owner/repo`, or GitHub URL
 - Optional version/commit checkout (`-v/--version`)
 - Optional custom package name (`-n/--name`)
+- Release asset auto-detection (`-r auto` / `--release auto`)
 - Conflict handling for package names (interactive prompt when needed)
 - Driver-based installation architecture:
   - Rust
@@ -22,6 +23,10 @@ It can clone/pull repositories, install from releases or source, create global s
   - C/C++ (`cmake` / `make`)
   - Generic (`mntpack.json` build command)
 - GitHub release asset download with source-build fallback
+- Version switching for installed packages (`mntpack use <package> <version>`)
+- Release-first upgrades (`mntpack upgrade`)
+- Repository search (`mntpack search ...`)
+- Install inspection (`mntpack inspect owner/repo`)
 - Package manifest support (`mntpack.json`)
 - Global shim generation (`-g/--global`)
 - PATH integration for global shims
@@ -84,20 +89,28 @@ Installer behavior:
 
 ```bash
 mntpack sync <repo> [-v <tag_or_commit>] [-r <release_asset_file>] [-n <custom_name>] [-g]
+mntpack install <repo> [-v <tag_or_commit>] [-r <release_asset_file|auto>] [-n <custom_name>] [-g]
 mntpack add <repo> [-v <tag_or_commit>] [-r <release_asset_file>] [-n <custom_name>] [-g]
 mntpack remove <repo_or_package>
 mntpack uninstall <repo_or_package>
 mntpack rm <repo_or_package>
 mntpack unsync <repo_or_package>
+mntpack reinstall <repo_or_package>
+mntpack resync <repo_or_package>
+mntpack use <package> <version>
 mntpack info <package>
 mntpack which <command>
 mntpack outdated
 mntpack clean [--repos]
 mntpack exec <repo> [args...]
+mntpack exec <package>@<version> [args...]
 mntpack run <package> [args...]
-mntpack list
+mntpack list [--global]
 mntpack update [package]
-mntpack doctor
+mntpack upgrade [package]
+mntpack inspect <repo>
+mntpack search <query...>
+mntpack doctor [--fix]
 mntpack config show
 mntpack config get <key>
 mntpack config set <key> <value>
@@ -111,7 +124,11 @@ mntpack sync scalf
 mntpack sync MINTILER-DEV/scalf -g
 mntpack sync https://github.com/user/repo.git -v 1.2.0
 mntpack sync owner/repo -v v1.2.0 -r tool-win64.zip
+mntpack sync owner/repo -r auto
 mntpack sync owner/repo --name custom-tool
+mntpack use ripgrep 14
+mntpack exec ripgrep@13 -- --version
+mntpack upgrade
 mntpack rm custom-tool
 mntpack info custom-tool
 mntpack which phc
@@ -124,6 +141,7 @@ mntpack run scalf
 `-r/--release` notes:
 
 - selects a specific GitHub release asset filename to download,
+- accepts `auto` for automatic platform/arch asset matching,
 - when used with `-v`, `-v` must be a tag (commit hashes are rejected).
 
 ## Package Naming Rules

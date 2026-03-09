@@ -26,20 +26,28 @@ The installer:
 
 ```bash
 mntpack sync <repo> [-v <tag_or_commit>] [-r <release_asset_file>] [-n <custom_name>] [-g]
+mntpack install <repo> [-v <tag_or_commit>] [-r <release_asset_file|auto>] [-n <custom_name>] [-g]
 mntpack add <repo> [-v <tag_or_commit>] [-r <release_asset_file>] [-n <custom_name>] [-g]
 mntpack remove <repo_or_package>
 mntpack uninstall <repo_or_package>
 mntpack rm <repo_or_package>
 mntpack unsync <repo_or_package>
+mntpack reinstall <repo_or_package>
+mntpack resync <repo_or_package>
+mntpack use <package> <version>
 mntpack info <package>
 mntpack which <command>
 mntpack outdated
 mntpack clean [--repos]
 mntpack exec <repo> [args...]
+mntpack exec <package>@<version> [args...]
 mntpack run <package> [args...]
-mntpack list
+mntpack list [--global]
 mntpack update [package]
-mntpack doctor
+mntpack upgrade [package]
+mntpack inspect <repo>
+mntpack search <query...>
+mntpack doctor [--fix]
 ```
 
 ## 3. Repository Input Formats
@@ -60,11 +68,13 @@ mntpack sync https://github.com/user/repo.git
 mntpack sync scalf -v 1.2.0
 mntpack sync scalf -v 8f3c2a1
 mntpack add MINTILER-DEV/php-asm -v v1.0.0 -r php-asm-win64.zip
+mntpack install MINTILER-DEV/php-asm -r auto
 ```
 
 `-r/--release` behavior:
 
 - chooses an exact release asset filename to download,
+- `-r auto` chooses a matching release asset automatically for current OS/arch,
 - cannot be used with `-v` set to a commit hash,
 - if `-v` is provided with `-r`, it must be a tag.
 
@@ -100,6 +110,29 @@ mntpack update mytool
 ```
 
 `update <package>` uses the same sync pipeline for that package.
+
+Release upgrades (latest release assets, not commit pull flow):
+
+```bash
+mntpack upgrade
+mntpack upgrade ripgrep
+```
+
+## 5.1 Version Switching
+
+Install multiple versions, then switch active version:
+
+```bash
+mntpack install ripgrep -v 13
+mntpack install ripgrep -v 14
+mntpack use ripgrep 14
+```
+
+Run a specific installed version without switching:
+
+```bash
+mntpack exec ripgrep@13 -- --version
+```
 
 ## 6. Removing Packages
 
@@ -155,6 +188,18 @@ Check for newer upstream commits:
 mntpack outdated
 ```
 
+Inspect a repository before install:
+
+```bash
+mntpack inspect owner/repo
+```
+
+Search GitHub for candidate tools:
+
+```bash
+mntpack search json parser
+```
+
 ## 9. Cleaning Cache
 
 Clear cache:
@@ -193,6 +238,11 @@ Notes:
 
 - Rust projects use their Rust executable name for global shim naming.
 - Shims call `mntpack run <package>` when possible, so auto-update-on-run applies there too.
+- List only global shim mappings with:
+
+```bash
+mntpack list --global
+```
 
 ## 12. Config
 
@@ -345,6 +395,12 @@ Check tools:
 
 ```bash
 mntpack doctor
+```
+
+Auto-repair common issues (PATH/shims/missing local artifacts):
+
+```bash
+mntpack doctor --fix
 ```
 
 If a tool is missing, set the matching config path key to the right executable path.
