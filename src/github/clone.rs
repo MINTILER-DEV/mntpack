@@ -26,7 +26,14 @@ pub fn sync_repo(
         remove_checkout(git_bin, &mirror_dir, repo_dir)?;
         add_worktree(git_bin, &mirror_dir, repo_dir)?;
     } else {
-        fetch_repo(repo_dir)?;
+        if let Err(err) = fetch_repo(repo_dir) {
+            eprintln!(
+                "detected broken linked worktree at {}: {err}. recreating checkout...",
+                repo_dir.display()
+            );
+            remove_checkout(git_bin, &mirror_dir, repo_dir)?;
+            add_worktree(git_bin, &mirror_dir, repo_dir)?;
+        }
     }
 
     let operation = if let Some(reference) = version {

@@ -1,5 +1,12 @@
 # Release Notes
 
+## 0.4.5 - 2026-03-09
+
+### Fixed
+- Git worktree recovery for sync/upgrade:
+  - when a repo checkout is a linked worktree but its `.git` metadata points to a missing path, mntpack now detects it and recreates the checkout automatically.
+  - this prevents failures like `failed to resolve path .../cache/git/.../worktrees/...` during `sync`/`upgrade`.
+
 ## 0.4.4 - 2026-03-09
 
 ### Fixed
