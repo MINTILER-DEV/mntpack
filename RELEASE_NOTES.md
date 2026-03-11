@@ -1,5 +1,13 @@
 # Release Notes
 
+## 0.5.1 - 2026-03-11
+
+### Fixed
+- Worktree repair output and cleanup:
+  - broken checkout recovery no longer leaks noisy `fatal: '... is not a working tree'` output during repair paths.
+  - worktree cleanup now checks whether a checkout is registered before attempting `git worktree remove`.
+  - stale/broken checkouts are still recreated automatically as before.
+
 ## 0.5.0 - 2026-03-11
 
 ### Added

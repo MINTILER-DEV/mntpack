@@ -1,4 +1,8 @@
-use std::{fs, path::Path, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use anyhow::{Context, Result, bail};
 use git2::{
@@ -130,10 +134,13 @@ fn add_worktree(git_bin: &str, mirror_dir: &Path, repo_dir: &Path) -> Result<()>
 }
 
 fn remove_checkout(git_bin: &str, mirror_dir: &Path, repo_dir: &Path) -> Result<()> {
-    if repo_dir.exists() && is_linked_worktree(repo_dir) {
+    if repo_dir.exists()
+        && is_linked_worktree(repo_dir)
+        && worktree_is_registered(git_bin, mirror_dir, repo_dir)?
+    {
         let git_dir_arg = format!("--git-dir={}", mirror_dir.display());
         let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        let _ = Command::new(git_bin)
+        let remove_output = Command::new(git_bin)
             .args([
                 git_dir_arg.as_str(),
                 "worktree",
@@ -141,7 +148,19 @@ fn remove_checkout(git_bin: &str, mirror_dir: &Path, repo_dir: &Path) -> Result<
                 "--force",
                 repo_dir_str.as_str(),
             ])
-            .status();
+            .output();
+        if let Ok(output) = remove_output {
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                if !stderr.is_empty() {
+                    eprintln!(
+                        "warning: failed to unregister worktree '{}': {}",
+                        repo_dir.display(),
+                        stderr
+                    );
+                }
+            }
+        }
     }
 
     if repo_dir.exists() {
@@ -152,8 +171,47 @@ fn remove_checkout(git_bin: &str, mirror_dir: &Path, repo_dir: &Path) -> Result<
     let git_dir_arg = format!("--git-dir={}", mirror_dir.display());
     let _ = Command::new(git_bin)
         .args([git_dir_arg.as_str(), "worktree", "prune", "--expire", "now"])
-        .status();
+        .output();
     Ok(())
+}
+
+fn worktree_is_registered(git_bin: &str, mirror_dir: &Path, repo_dir: &Path) -> Result<bool> {
+    let git_dir_arg = format!("--git-dir={}", mirror_dir.display());
+    let output = Command::new(git_bin)
+        .args([git_dir_arg.as_str(), "worktree", "list", "--porcelain"])
+        .output()
+        .with_context(|| {
+            format!(
+                "failed to list worktrees for mirror {}",
+                mirror_dir.display()
+            )
+        })?;
+    if !output.status.success() {
+        return Ok(false);
+    }
+
+    let target = normalize_path_for_compare(repo_dir);
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        if let Some(path) = line.strip_prefix("worktree ") {
+            let current = normalize_path_for_compare(Path::new(path));
+            if current == target {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+fn normalize_path_for_compare(path: &Path) -> String {
+    let candidate: PathBuf = path
+        .canonicalize()
+        .unwrap_or_else(|_| PathBuf::from(path.to_string_lossy().to_string()));
+    let mut normalized = candidate.to_string_lossy().replace('/', "\\");
+    normalized = normalized.trim_end_matches('\\').to_string();
+    if cfg!(windows) {
+        normalized = normalized.to_ascii_lowercase();
+    }
+    normalized
 }
 
 fn is_linked_worktree(repo_dir: &Path) -> bool {
