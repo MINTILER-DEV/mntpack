@@ -15,6 +15,9 @@ It can clone/pull repositories, install from releases or source, create global s
 - Optional version/commit checkout (`-v/--version`)
 - Optional custom package name (`-n/--name`)
 - Release asset auto-detection (`-r auto` / `--release auto`)
+- Deterministic lockfile workflow (`mntpack.lock`) with commit and SHA256 pinning
+- Content-addressed store (`store/sha256/<hash>/<binary>`)
+- Remote binary cache support (`binaryCache` config + `mntpack prebuild`)
 - Conflict handling for package names (interactive prompt when needed)
 - Driver-based installation architecture:
   - Rust
@@ -27,6 +30,7 @@ It can clone/pull repositories, install from releases or source, create global s
 - Release-first upgrades (`mntpack upgrade`)
 - Repository search (`mntpack search ...`)
 - Install inspection (`mntpack inspect owner/repo`)
+- Dependency explanation (`mntpack why <package>`)
 - Package manifest support (`mntpack.json`)
 - Global shim generation (`-g/--global`)
 - PATH integration for global shims
@@ -46,6 +50,7 @@ By default `mntpack` uses:
   cache/
     git/
     exec/
+    binary-cache/
   bin/
 ```
 
@@ -79,7 +84,7 @@ Installer behavior:
 - Prompts for install base directory (default: home directory)
 - Creates `<base>/.mntpack/{repos,packages,cache,bin}`
 - Installs `mntpack` as managed package `packages/mntpack`
-- Places payload in `store/mntpack/<commit-or-payload-id>`
+- Places payload in hash-backed store entries under `store/sha256/<hash>/...`
 - Creates `mntpack` shim in `.mntpack/bin`
 - Runs a post-install managed self-sync (`sync MINTILER-DEV/mntpack --name mntpack -g`)
 - Adds `.mntpack/bin` to PATH (if missing)
@@ -110,6 +115,9 @@ mntpack update [package]
 mntpack upgrade [package]
 mntpack inspect <repo>
 mntpack search <query...>
+mntpack prebuild
+mntpack why <package>
+mntpack lock regenerate
 mntpack doctor [--fix]
 mntpack config show
 mntpack config get <key>
@@ -163,14 +171,40 @@ mntpack run scalf
 - If `autoUpdateOnRun` is `true`, shims route through `mntpack run <package>`
 - If `autoUpdateOnRun` is `false`, shims execute package binaries directly when available
 
-## Store And Lazy Build
+## Store, Lockfile, And Lazy Build
 
 - Binaries are shared in `<MNTPACK_HOME>/store` and package folders link to them.
-- Store layout is `<MNTPACK_HOME>/store/<repo>/<version-or-commit>/...`.
+- Primary store layout is `<MNTPACK_HOME>/store/sha256/<hash>/<binary>`.
+- Version aliases for `use` / `exec <package>@<version>` are tracked at:
+  - `<MNTPACK_HOME>/store/versions/<repo>/<version-or-commit>/...`.
+- `mntpack.lock` is generated in the current working directory and stores:
+  - repository key (`owner/repo`)
+  - pinned commit
+  - pinned binary hash (`sha256:...`)
+- `sync` honors lock entries when present.
+- `update` / `upgrade` bypass lock pinning and regenerate lock entries from installed records.
 - `sync` is clone-first and marks packages for lazy preparation/build when needed.
 - `run` prepares/builds packages on-demand when artifacts are missing.
 - Git mirror cache is kept under `<MNTPACK_HOME>/cache/git`.
 - `repos/<owner>/<repo>` checkouts are linked git worktrees backed by those mirrors.
+
+## Binary Cache Config
+
+Configure remote binary cache with:
+
+- `binaryCache.enabled` (`true` / `false`)
+- `binaryCache.repo` (for example `MINTILER-DEV/mntpack-binaries`)
+
+Example:
+
+```json
+{
+  "binaryCache": {
+    "enabled": true,
+    "repo": "MINTILER-DEV/mntpack-binaries"
+  }
+}
+```
 
 ## Manifest (`mntpack.json`)
 

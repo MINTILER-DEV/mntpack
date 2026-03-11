@@ -17,7 +17,7 @@ The installer:
 - asks for install base directory (default: home directory),
 - creates `.mntpack` folders,
 - installs `mntpack` as package `packages/mntpack`,
-- stores mntpack payload in `store/mntpack/<commit-or-payload-id>`,
+- stores mntpack payload in `store/sha256/<hash>/...`,
 - creates `mntpack` shim in `.mntpack/bin`,
 - runs a post-install managed self-sync for latest `MINTILER-DEV/mntpack`,
 - sets PATH and `MNTPACK_HOME`.
@@ -47,6 +47,9 @@ mntpack update [package]
 mntpack upgrade [package]
 mntpack inspect <repo>
 mntpack search <query...>
+mntpack prebuild
+mntpack why <package>
+mntpack lock regenerate
 mntpack doctor [--fix]
 ```
 
@@ -110,6 +113,7 @@ mntpack update mytool
 ```
 
 `update <package>` uses the same sync pipeline for that package.
+`update` bypasses lock pinning and regenerates `mntpack.lock` from installed package records.
 
 Release upgrades (latest release assets, not commit pull flow):
 
@@ -117,6 +121,8 @@ Release upgrades (latest release assets, not commit pull flow):
 mntpack upgrade
 mntpack upgrade ripgrep
 ```
+
+`upgrade` also bypasses lock pinning and regenerates `mntpack.lock` after upgrade.
 
 ## 5.1 Version Switching
 
@@ -278,6 +284,8 @@ Important config keys:
 
 - `defaultOwner`
 - `autoUpdateOnRun` (`true` / `false`)
+- `binaryCache.enabled` (`true` / `false`)
+- `binaryCache.repo` (for example `MINTILER-DEV/mntpack-binaries`)
 - `paths.git`
 - `paths.python`
 - `paths.pip`
@@ -296,6 +304,28 @@ Important config keys:
 - Node: `package.json`
 - C/C++: `CMakeLists.txt` or `Makefile`/`makefile`
 - Generic: fallback with `mntpack.json` run/bin
+
+## 13.1 Lockfile and Binary Cache
+
+`mntpack` uses `mntpack.lock` in your current working directory for deterministic installs.
+
+Lock entries include:
+
+- repository (`owner/repo`)
+- commit
+- binary hash (`sha256:...`)
+
+Behavior:
+
+- `sync` reads lock entries and pins to exact commit/hash when available.
+- Hash mismatches during locked install abort the install.
+- `lock regenerate` rebuilds the lockfile from installed package records.
+
+Remote binary cache:
+
+- configure `binaryCache.enabled` and `binaryCache.repo`,
+- use `mntpack prebuild` inside a repository to upload hashed binaries,
+- locked installs try local store first, then remote cache, then local build fallback.
 
 ## 14. `mntpack.json` Guide
 
@@ -422,9 +452,12 @@ config.json
 repos/
 packages/
 store/
+store/sha256/
+store/versions/
 cache/
 cache/git/
 cache/exec/
+cache/binary-cache/
 bin/
 ```
 
