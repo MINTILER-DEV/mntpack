@@ -6,10 +6,12 @@ use crate::{
     config::RuntimeContext,
     package::lockfile::{regenerate_from_installed, save_to_cwd},
     package::record::{find_record_by_package_name, load_all_records},
+    ui::progress::ProgressBar,
 };
 
 pub async fn execute(runtime: &RuntimeContext, package: Option<&str>) -> Result<()> {
     if let Some(package_name) = package {
+        let mut progress = ProgressBar::new("upgrade", 2);
         if let Some(record) = find_record_by_package_name(&runtime.paths.packages, package_name)? {
             let mut visited = HashSet::new();
             crate::commands::sync::sync_package_internal(
@@ -23,9 +25,11 @@ pub async fn execute(runtime: &RuntimeContext, package: Option<&str>) -> Result<
                 false,
             )
             .await?;
+            progress.advance(format!("synced {}", record.package_name));
             println!("upgraded {}", record.package_name);
             let lock = regenerate_from_installed(runtime)?;
             save_to_cwd(&lock)?;
+            progress.finish("lockfile regenerated");
             return Ok(());
         }
 
@@ -38,6 +42,7 @@ pub async fn execute(runtime: &RuntimeContext, package: Option<&str>) -> Result<
         return Ok(());
     }
 
+    let mut progress = ProgressBar::new("upgrade", records.len());
     let mut visited = HashSet::new();
     let mut upgraded = 0usize;
     let mut failed = 0usize;
@@ -54,9 +59,13 @@ pub async fn execute(runtime: &RuntimeContext, package: Option<&str>) -> Result<
         )
         .await;
         match result {
-            Ok(_) => upgraded += 1,
+            Ok(_) => {
+                upgraded += 1;
+                progress.advance(format!("ok {}", record.package_name));
+            }
             Err(err) => {
                 failed += 1;
+                progress.advance(format!("failed {}", record.package_name));
                 eprintln!("warning: failed to upgrade {}: {err}", record.package_name);
             }
         }
@@ -65,12 +74,14 @@ pub async fn execute(runtime: &RuntimeContext, package: Option<&str>) -> Result<
     if failed > 0 {
         let lock = regenerate_from_installed(runtime)?;
         save_to_cwd(&lock)?;
+        progress.finish(format!("{upgraded} ok, {failed} failed"));
         eprintln!("upgraded {upgraded} package(s), {failed} failed");
         return Ok(());
     }
 
     let lock = regenerate_from_installed(runtime)?;
     save_to_cwd(&lock)?;
+    progress.finish(format!("{upgraded} package(s)"));
     println!("upgraded {upgraded} package(s)");
     Ok(())
 }

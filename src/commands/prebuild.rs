@@ -6,14 +6,28 @@ use crate::{
     binary_cache,
     config::RuntimeContext,
     package::{resolver::resolve_repo, store::sha256_file},
+    ui::progress::ProgressBar,
 };
 
 pub async fn execute(runtime: &RuntimeContext) -> Result<()> {
     if !binary_cache::enabled(runtime) {
         bail!("binary cache is not enabled; set config key 'binaryCache.enabled' to true");
     }
+    if runtime
+        .config
+        .binary_cache
+        .repo
+        .as_deref()
+        .map(|value| value.trim().is_empty())
+        .unwrap_or(true)
+    {
+        bail!("binary cache repo is not configured; set config key 'binaryCache.repo'");
+    }
 
+    let mut progress = ProgressBar::new("prebuild", 5);
     let repo_spec = detect_current_repo_spec(&runtime.config.default_owner)?;
+    progress.advance(format!("repo: {repo_spec}"));
+
     let mut visited = HashSet::new();
     let synced = crate::commands::sync::sync_package_internal(
         runtime,
@@ -26,8 +40,12 @@ pub async fn execute(runtime: &RuntimeContext) -> Result<()> {
         true,
     )
     .await?;
+    progress.advance(format!("synced {}", synced.package_name));
+
     let prepared =
         crate::commands::sync::ensure_package_ready(runtime, &synced.package_name).await?;
+    progress.advance(format!("prepared {}", prepared.package_name));
+
     let binary_path =
         crate::commands::sync::resolve_binary_path(runtime, &prepared).with_context(|| {
             format!(
@@ -40,7 +58,11 @@ pub async fn execute(runtime: &RuntimeContext) -> Result<()> {
     } else {
         sha256_file(&binary_path)?
     };
+    progress.advance(format!("hash {}", short_hash(&hash)));
+
     binary_cache::upload_binary_to_cache(runtime, &prepared.repo_spec(), &hash, &binary_path)?;
+    progress.finish("uploaded");
+
     println!(
         "prebuilt {} ({}) -> {}",
         prepared.package_name,
@@ -63,4 +85,8 @@ fn detect_current_repo_spec(default_owner: &str) -> Result<String> {
         .to_string();
     let resolved = resolve_repo(&url, default_owner)?;
     Ok(resolved.key)
+}
+
+fn short_hash(hash: &str) -> String {
+    hash.chars().take(12).collect()
 }

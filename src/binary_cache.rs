@@ -17,6 +17,10 @@ use crate::{
 
 pub fn enabled(runtime: &RuntimeContext) -> bool {
     runtime.config.binary_cache.enabled
+}
+
+pub fn configured(runtime: &RuntimeContext) -> bool {
+    enabled(runtime)
         && runtime
             .config
             .binary_cache
@@ -143,7 +147,7 @@ pub fn upload_binary_to_cache(
 }
 
 fn ensure_cache_checkout(runtime: &RuntimeContext) -> Result<Option<PathBuf>> {
-    if !enabled(runtime) {
+    if !configured(runtime) {
         return Ok(None);
     }
     let repo_spec = runtime

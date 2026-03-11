@@ -39,6 +39,7 @@ use crate::{
         },
     },
     shim::generator::{create_shim, ensure_bin_on_path},
+    ui::progress::ProgressBar,
 };
 
 const PAYLOAD_LINK_NAME: &str = "payload";
@@ -55,6 +56,7 @@ pub async fn execute(
     global: bool,
 ) -> Result<()> {
     validate_release_version_constraints(version, release_asset)?;
+    let mut progress = ProgressBar::new("sync", 3);
 
     let mut effective_repo_input = repo_input.to_string();
     let mut effective_name = custom_name.map(ToString::to_string);
@@ -80,6 +82,7 @@ pub async fn execute(
         true,
     )
     .await?;
+    progress.advance(format!("synced {}", record.package_name));
     if record.binary_hash.is_none() && record.run_command.is_none() {
         record = ensure_package_ready(runtime, &record.package_name).await?;
     }
@@ -89,7 +92,9 @@ pub async fn execute(
             record.package_name
         );
     }
+    progress.advance("prepared package");
     refresh_lockfile(runtime)?;
+    progress.finish("lockfile updated");
     println!("synced {} ({})", record.package_name, record.repo_spec());
     Ok(())
 }

@@ -1,5 +1,20 @@
 # Release Notes
 
+## 0.5.2 - 2026-03-11
+
+### Added
+- Same-line progress bars for long-running commands:
+  - `sync`
+  - `update`
+  - `upgrade`
+  - `prebuild`
+- Unicode bar rendering (`█`/`░`) with ASCII fallback (`=`/`>`) when needed.
+
+### Fixed
+- `prebuild` binary-cache config validation now reports the real missing value:
+  - if `binaryCache.enabled` is `false`, it asks to enable it,
+  - if enabled but `binaryCache.repo` is missing, it now explicitly asks to set `binaryCache.repo`.
+
 ## 0.5.1 - 2026-03-11
 
 ### Fixed
