@@ -13,15 +13,10 @@ pub async fn execute(runtime: &RuntimeContext) -> Result<()> {
     if !binary_cache::enabled(runtime) {
         bail!("binary cache is not enabled; set config key 'binaryCache.enabled' to true");
     }
-    if runtime
-        .config
-        .binary_cache
-        .repo
-        .as_deref()
-        .map(|value| value.trim().is_empty())
-        .unwrap_or(true)
-    {
-        bail!("binary cache repo is not configured; set config key 'binaryCache.repo'");
+    if !binary_cache::configured(runtime) {
+        bail!(
+            "binary cache repo is not configured; set config key 'binaryCache.repo' or 'syncDispatch.repo'"
+        );
     }
 
     let mut progress = ProgressBar::new("prebuild", 5);

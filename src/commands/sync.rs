@@ -216,9 +216,53 @@ pub async fn sync_package_internal(
                 binary_hash = Some(stored.binary_hash);
                 binary_name = Some(stored.binary_name);
                 build_pending = false;
-            } else if let Some(cached) =
-                binary_cache::try_download_cached_binary(runtime, &resolved.key, expected_hash)?
-            {
+            } else {
+                match binary_cache::try_download_cached_binary(
+                    runtime,
+                    &resolved.key,
+                    expected_hash,
+                ) {
+                    Ok(Some(cached)) => {
+                        fs::create_dir_all(&package_dir).with_context(|| {
+                            format!("failed to create {}", package_dir.display())
+                        })?;
+                        let stored = persist_binary_to_store(
+                            runtime,
+                            &resolved.repo,
+                            effective_version
+                                .or(manifest.as_ref().and_then(|m| m.version.as_deref())),
+                            commit.as_deref(),
+                            &package_dir,
+                            &package_name,
+                            &cached,
+                        )?;
+                        installed_binary = Some(stored.binary_path);
+                        binary_rel_path = Some(stored.binary_rel_path);
+                        store_entry = Some(stored.store_entry);
+                        binary_hash = Some(stored.binary_hash);
+                        binary_name = Some(stored.binary_name);
+                        build_pending = false;
+                    }
+                    Ok(None) => {}
+                    Err(err) => eprintln!(
+                        "warning: failed to read binary cache entry for '{}': {}",
+                        resolved.key, err
+                    ),
+                }
+            }
+        }
+    }
+
+    if !release_requested && run_command.is_none() && installed_binary.is_none() {
+        match binary_cache::try_download_cached_release_binary(
+            runtime,
+            &resolved.key,
+            effective_version,
+            commit.as_deref(),
+        )
+        .await
+        {
+            Ok(Some(cached_release)) => {
                 fs::create_dir_all(&package_dir)
                     .with_context(|| format!("failed to create {}", package_dir.display()))?;
                 let stored = persist_binary_to_store(
@@ -228,7 +272,7 @@ pub async fn sync_package_internal(
                     commit.as_deref(),
                     &package_dir,
                     &package_name,
-                    &cached,
+                    &cached_release,
                 )?;
                 installed_binary = Some(stored.binary_path);
                 binary_rel_path = Some(stored.binary_rel_path);
@@ -237,6 +281,11 @@ pub async fn sync_package_internal(
                 binary_name = Some(stored.binary_name);
                 build_pending = false;
             }
+            Ok(None) => {}
+            Err(err) => eprintln!(
+                "warning: failed to download prebuilt binary from cache for '{}': {}",
+                resolved.key, err
+            ),
         }
     }
 

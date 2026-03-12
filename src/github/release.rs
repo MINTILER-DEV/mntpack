@@ -10,6 +10,7 @@ use flate2::read::GzDecoder;
 use serde::Deserialize;
 use tar::Archive;
 use walkdir::WalkDir;
+use xz2::read::XzDecoder;
 use zip::ZipArchive;
 
 use crate::{config::RuntimeContext, package::manifest::Manifest, package::resolver::ResolvedRepo};
@@ -111,6 +112,56 @@ pub async fn try_download_release_binary(
     let binary =
         download_and_extract_asset(runtime, resolved, asset, expected_bin.as_deref()).await?;
     Ok(Some(binary))
+}
+
+pub async fn try_download_release_binary_from_tags(
+    runtime: &RuntimeContext,
+    resolved: &ResolvedRepo,
+    tag_candidates: &[String],
+) -> Result<Option<PathBuf>> {
+    if tag_candidates.is_empty() {
+        return Ok(None);
+    }
+
+    let target = current_target();
+    let client = reqwest::Client::builder()
+        .user_agent("mntpack/0.1")
+        .build()
+        .context("failed to create http client")?;
+
+    for tag in tag_candidates {
+        let trimmed = tag.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let api_url = format!(
+            "https://api.github.com/repos/{}/{}/releases/tags/{}",
+            resolved.owner, resolved.repo, trimmed
+        );
+        let response = client
+            .get(&api_url)
+            .send()
+            .await
+            .with_context(|| format!("failed to query github release api: {api_url}"))?;
+        if response.status().as_u16() == 404 {
+            continue;
+        }
+
+        let response = response
+            .error_for_status()
+            .with_context(|| format!("github api request failed for {}", resolved.key))?;
+        let release = response
+            .json::<ReleaseResponse>()
+            .await
+            .context("failed to parse github release response")?;
+        let Some(asset) = select_auto_asset(&release.assets, resolved, target) else {
+            continue;
+        };
+        let binary = download_and_extract_asset(runtime, resolved, asset, None).await?;
+        return Ok(Some(binary));
+    }
+
+    Ok(None)
 }
 
 fn select_auto_asset<'a>(
@@ -231,6 +282,8 @@ async fn download_and_extract_asset(
         extract_zip(&asset_path, &extract_dir)?;
     } else if asset.name.ends_with(".tar.gz") || asset.name.ends_with(".tgz") {
         extract_tar_gz(&asset_path, &extract_dir)?;
+    } else if asset.name.ends_with(".tar.xz") || asset.name.ends_with(".txz") {
+        extract_tar_xz(&asset_path, &extract_dir)?;
     } else {
         let output = if let Some(relative_bin) = expected_bin {
             let direct_path = extract_dir.join(relative_bin);
@@ -365,6 +418,20 @@ fn extract_tar_gz(archive_path: &Path, destination: &Path) -> Result<()> {
     let file = File::open(archive_path)
         .with_context(|| format!("failed to open {}", archive_path.display()))?;
     let mut reader = GzDecoder::new(file);
+    let mut data = Vec::new();
+    reader.read_to_end(&mut data)?;
+    let cursor = std::io::Cursor::new(data);
+    let mut archive = Archive::new(cursor);
+    archive
+        .unpack(destination)
+        .with_context(|| format!("failed to unpack into {}", destination.display()))?;
+    Ok(())
+}
+
+fn extract_tar_xz(archive_path: &Path, destination: &Path) -> Result<()> {
+    let file = File::open(archive_path)
+        .with_context(|| format!("failed to open {}", archive_path.display()))?;
+    let mut reader = XzDecoder::new(file);
     let mut data = Vec::new();
     reader.read_to_end(&mut data)?;
     let cursor = std::io::Cursor::new(data);

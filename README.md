@@ -193,7 +193,7 @@ mntpack run scalf
 Configure remote binary cache with:
 
 - `binaryCache.enabled` (`true` / `false`)
-- `binaryCache.repo` (for example `MINTILER-DEV/mntpack-binaries`)
+- `binaryCache.repo` (optional; falls back to `syncDispatch.repo`, default `mntpack/mntpack-index`)
 
 Example:
 
@@ -201,7 +201,7 @@ Example:
 {
   "binaryCache": {
     "enabled": true,
-    "repo": "MINTILER-DEV/mntpack-binaries"
+    "repo": "mntpack/mntpack-index"
   }
 }
 ```
@@ -216,6 +216,8 @@ You can trigger an external GitHub workflow after each successful `mntpack sync`
 - `syncDispatch.eventType` (default: `mntpack_sync`)
 
 `sync` sends a `repository_dispatch` event to the configured repo using the token from the env var defined by `syncDispatch.tokenEnv`.
+
+When binary cache is enabled, `sync` also tries to consume prebuilt binaries from cache/index releases (including `.tar.xz`) before local build fallback.
 
 ## Manifest (`mntpack.json`)
 

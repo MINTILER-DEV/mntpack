@@ -285,7 +285,7 @@ Important config keys:
 - `defaultOwner`
 - `autoUpdateOnRun` (`true` / `false`)
 - `binaryCache.enabled` (`true` / `false`)
-- `binaryCache.repo` (for example `MINTILER-DEV/mntpack-binaries`)
+- `binaryCache.repo` (optional; defaults via `syncDispatch.repo`, usually `mntpack/mntpack-index`)
 - `syncDispatch.enabled` (`true` / `false`)
 - `syncDispatch.repo` (default: `mntpack/mntpack-index`)
 - `syncDispatch.tokenEnv` (default: `MNTPACK_SYNC_DISPATCH_TOKEN`)
@@ -327,9 +327,9 @@ Behavior:
 
 Remote binary cache:
 
-- configure `binaryCache.enabled` and `binaryCache.repo`,
+- configure `binaryCache.enabled` and optionally `binaryCache.repo` (`syncDispatch.repo` is used as fallback),
 - use `mntpack prebuild` inside a repository to upload hashed binaries,
-- locked installs try local store first, then remote cache, then local build fallback.
+- installs try local store, then cache/index binaries (including `.tar.xz` release assets), then local build fallback.
 
 ## 14. `mntpack.json` Guide
 

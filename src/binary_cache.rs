@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeSet,
     fs,
     path::{Path, PathBuf},
     process::Command,
@@ -9,6 +10,7 @@ use anyhow::{Context, Result, bail};
 use crate::{
     config::RuntimeContext,
     github::clone::sync_repo,
+    github::release::try_download_release_binary_from_tags,
     package::{
         resolver::resolve_repo,
         store::{first_file_in_dir, normalize_hash, sha256_file},
@@ -20,14 +22,7 @@ pub fn enabled(runtime: &RuntimeContext) -> bool {
 }
 
 pub fn configured(runtime: &RuntimeContext) -> bool {
-    enabled(runtime)
-        && runtime
-            .config
-            .binary_cache
-            .repo
-            .as_deref()
-            .map(|value| !value.trim().is_empty())
-            .unwrap_or(false)
+    enabled(runtime) && effective_cache_repo(runtime).is_some()
 }
 
 pub fn try_download_cached_binary(
@@ -73,6 +68,28 @@ pub fn try_download_cached_binary(
         )
     })?;
     Ok(Some(destination))
+}
+
+pub async fn try_download_cached_release_binary(
+    runtime: &RuntimeContext,
+    package_repo_name: &str,
+    requested_version: Option<&str>,
+    commit: Option<&str>,
+) -> Result<Option<PathBuf>> {
+    if !enabled(runtime) {
+        return Ok(None);
+    }
+
+    let Some(cache_repo_spec) = effective_cache_repo(runtime) else {
+        return Ok(None);
+    };
+    let cache_repo = resolve_repo(&cache_repo_spec, &runtime.config.default_owner)?;
+    let tags = build_release_tag_candidates(package_repo_name, requested_version, commit);
+    if tags.is_empty() {
+        return Ok(None);
+    }
+
+    try_download_release_binary_from_tags(runtime, &cache_repo, &tags).await
 }
 
 pub fn upload_binary_to_cache(
@@ -150,18 +167,10 @@ fn ensure_cache_checkout(runtime: &RuntimeContext) -> Result<Option<PathBuf>> {
     if !configured(runtime) {
         return Ok(None);
     }
-    let repo_spec = runtime
-        .config
-        .binary_cache
-        .repo
-        .as_deref()
-        .unwrap_or_default()
-        .trim();
-    if repo_spec.is_empty() {
+    let Some(repo_spec) = effective_cache_repo(runtime) else {
         return Ok(None);
-    }
-
-    let resolved = resolve_repo(repo_spec, &runtime.config.default_owner)?;
+    };
+    let resolved = resolve_repo(&repo_spec, &runtime.config.default_owner)?;
     let checkout = runtime
         .paths
         .cache
@@ -176,6 +185,66 @@ fn ensure_cache_checkout(runtime: &RuntimeContext) -> Result<Option<PathBuf>> {
         None,
     )?;
     Ok(Some(checkout))
+}
+
+fn effective_cache_repo(runtime: &RuntimeContext) -> Option<String> {
+    let from_binary_cache = runtime
+        .config
+        .binary_cache
+        .repo
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string);
+    if from_binary_cache.is_some() {
+        return from_binary_cache;
+    }
+    if runtime.config.sync_dispatch.repo.trim().is_empty() {
+        None
+    } else {
+        Some(runtime.config.sync_dispatch.repo.trim().to_string())
+    }
+}
+
+fn build_release_tag_candidates(
+    package_repo_name: &str,
+    requested_version: Option<&str>,
+    commit: Option<&str>,
+) -> Vec<String> {
+    let key_dash = package_repo_name.replace('/', "-");
+    let key_dunder = package_repo_name.replace('/', "__");
+    let key_sanitized = sanitize_tag_component(package_repo_name);
+    let mut suffixes = BTreeSet::new();
+    for value in [requested_version, commit]
+        .into_iter()
+        .flatten()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        suffixes.insert(value.to_string());
+        suffixes.insert(sanitize_tag_component(value));
+    }
+
+    let mut tags = BTreeSet::new();
+    for suffix in suffixes {
+        tags.insert(format!("{key_dash}-{suffix}"));
+        tags.insert(format!("{key_dunder}-{suffix}"));
+        tags.insert(format!("{key_sanitized}-{suffix}"));
+    }
+    tags.into_iter().collect()
+}
+
+fn sanitize_tag_component(value: &str) -> String {
+    value
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-' {
+                c
+            } else {
+                '-'
+            }
+        })
+        .collect()
 }
 
 fn run_git(runtime: &RuntimeContext, checkout: &Path, args: &[&str], context: &str) -> Result<()> {
