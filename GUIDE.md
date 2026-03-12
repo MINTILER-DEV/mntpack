@@ -309,6 +309,10 @@ Important config keys:
 - `autoUpdateOnRun` (`true` / `false`)
 - `binaryCache.enabled` (`true` / `false`)
 - `binaryCache.repo` (for example `MINTILER-DEV/mntpack-binaries`)
+- `syncDispatch.enabled` (`true` / `false`)
+- `syncDispatch.repo` (default: `mntpack/mntpack-index`)
+- `syncDispatch.tokenEnv` (default: `MNTPACK_SYNC_DISPATCH_TOKEN`)
+- `syncDispatch.eventType` (default: `mntpack_sync`)
 - `paths.git`
 - `paths.python`
 - `paths.pip`

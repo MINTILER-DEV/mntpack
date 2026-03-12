@@ -232,6 +232,17 @@ Example:
 }
 ```
 
+## Sync Dispatch Config
+
+You can trigger an external GitHub workflow after each successful `mntpack sync` by configuring:
+
+- `syncDispatch.enabled`
+- `syncDispatch.repo` (default: `mntpack/mntpack-index`)
+- `syncDispatch.tokenEnv` (default: `MNTPACK_SYNC_DISPATCH_TOKEN`)
+- `syncDispatch.eventType` (default: `mntpack_sync`)
+
+`sync` sends a `repository_dispatch` event to the configured repo using the token from the env var defined by `syncDispatch.tokenEnv`.
+
 ## Manifest (`mntpack.json`)
 
 Supported fields include:

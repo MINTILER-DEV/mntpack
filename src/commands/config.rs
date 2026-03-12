@@ -43,6 +43,10 @@ fn get_value(config: &Config, key: &str) -> Result<String> {
         "autoupdateonrun" => Ok(config.auto_update_on_run.to_string()),
         "binarycacheenabled" => Ok(config.binary_cache.enabled.to_string()),
         "binarycacherepo" => Ok(config.binary_cache.repo.clone().unwrap_or_default()),
+        "syncdispatchenabled" => Ok(config.sync_dispatch.enabled.to_string()),
+        "syncdispatchrepo" => Ok(config.sync_dispatch.repo.clone()),
+        "syncdispatchtokenenv" => Ok(config.sync_dispatch.token_env.clone()),
+        "syncdispatcheventtype" => Ok(config.sync_dispatch.event_type.clone()),
         _ => bail!("unknown config key '{key}'"),
     }
 }
@@ -76,6 +80,14 @@ fn set_value(config: &mut Config, key: &str, value: &str) -> Result<()> {
                 Some(trimmed.to_string())
             };
         }
+        "syncdispatchenabled" => {
+            config.sync_dispatch.enabled = value
+                .parse::<bool>()
+                .map_err(|_| anyhow::anyhow!("expected true/false for '{}'", key))?
+        }
+        "syncdispatchrepo" => config.sync_dispatch.repo = value.trim().to_string(),
+        "syncdispatchtokenenv" => config.sync_dispatch.token_env = value.trim().to_string(),
+        "syncdispatcheventtype" => config.sync_dispatch.event_type = value.trim().to_string(),
         _ => bail!("unknown config key '{key}'"),
     }
     Ok(())

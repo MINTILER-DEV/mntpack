@@ -7,6 +7,7 @@ mod github;
 mod installer;
 mod package;
 mod shim;
+mod sync_dispatch;
 mod ui;
 
 use anyhow::Result;

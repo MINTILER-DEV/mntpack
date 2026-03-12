@@ -1,5 +1,22 @@
 # Release Notes
 
+## 0.6.1 - 2026-03-12
+
+### Added
+- Sync dispatch integration for external build/index automation:
+  - `sync` can now trigger a GitHub `repository_dispatch` event after successful package sync.
+  - new config keys:
+    - `syncDispatch.enabled`
+    - `syncDispatch.repo` (default: `mntpack/mntpack-index`)
+    - `syncDispatch.tokenEnv` (default: `MNTPACK_SYNC_DISPATCH_TOKEN`)
+    - `syncDispatch.eventType` (default: `mntpack_sync`)
+- Added `mntpack-index` workflow support file:
+  - `.github/workflows/sync-build-release.yml` in the `mntpack-index` repo can sync/build/package (`tar.xz`) and publish releases using dispatched payloads.
+
+### Fixed
+- GitHub build workflow i686 Linux dependency setup:
+  - now installs `pkg-config` and `libssl-dev:i386` with cross-related OpenSSL env vars so `openssl-sys` resolves during `i686-unknown-linux-gnu` builds.
+
 ## 0.6.0 - 2026-03-12
 
 ### Added

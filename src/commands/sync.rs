@@ -94,6 +94,9 @@ pub async fn execute(
     }
     progress.advance("prepared package");
     refresh_lockfile(runtime)?;
+    if let Err(err) = crate::sync_dispatch::dispatch_sync(runtime, &record, version).await {
+        eprintln!("warning: failed to trigger sync dispatch workflow: {err}");
+    }
     progress.finish("lockfile updated");
     println!("synced {} ({})", record.package_name, record.repo_spec());
     Ok(())

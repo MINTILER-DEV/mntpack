@@ -55,6 +55,27 @@ impl Default for BinaryCacheConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(default)]
+pub struct SyncDispatchConfig {
+    pub enabled: bool,
+    pub repo: String,
+    pub token_env: String,
+    pub event_type: String,
+}
+
+impl Default for SyncDispatchConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            repo: "mntpack/mntpack-index".to_string(),
+            token_env: "MNTPACK_SYNC_DISPATCH_TOKEN".to_string(),
+            event_type: "mntpack_sync".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Config {
     #[serde(default = "default_owner")]
     pub default_owner: String,
@@ -64,6 +85,8 @@ pub struct Config {
     pub auto_update_on_run: bool,
     #[serde(default)]
     pub binary_cache: BinaryCacheConfig,
+    #[serde(default)]
+    pub sync_dispatch: SyncDispatchConfig,
 }
 
 impl Default for Config {
@@ -73,6 +96,7 @@ impl Default for Config {
             paths: ToolPaths::default(),
             auto_update_on_run: false,
             binary_cache: BinaryCacheConfig::default(),
+            sync_dispatch: SyncDispatchConfig::default(),
         }
     }
 }
