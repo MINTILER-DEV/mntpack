@@ -44,6 +44,7 @@ use crate::{
 const PAYLOAD_LINK_NAME: &str = "payload";
 const SPECIAL_PACKAGE_NAME: &str = "mntpack";
 const SPECIAL_OWNER: &str = "mntpack";
+const SPECIAL_OWNER_LEGACY: &str = "MINTILER-DEV";
 const SPECIAL_REPO: &str = "mntpack";
 
 pub async fn execute(
@@ -1080,7 +1081,8 @@ fn looks_like_commit_hash(input: &str) -> bool {
 }
 
 fn is_special_repo(owner: &str, repo: &str) -> bool {
-    owner.eq_ignore_ascii_case(SPECIAL_OWNER) && repo.eq_ignore_ascii_case(SPECIAL_REPO)
+    (owner.eq_ignore_ascii_case(SPECIAL_OWNER) || owner.eq_ignore_ascii_case(SPECIAL_OWNER_LEGACY))
+        && repo.eq_ignore_ascii_case(SPECIAL_REPO)
 }
 
 fn migrate_legacy_repo_layout(

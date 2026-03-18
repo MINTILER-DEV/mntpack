@@ -17,6 +17,7 @@ use crate::{
 
 const SPECIAL_PACKAGE_NAME: &str = "mntpack";
 const SPECIAL_OWNER: &str = "mntpack";
+const SPECIAL_OWNER_LEGACY: &str = "MINTILER-DEV";
 const SPECIAL_REPO: &str = "mntpack";
 
 pub fn execute(runtime: &RuntimeContext, input: &str) -> Result<()> {
@@ -237,6 +238,7 @@ fn is_protected_mntpack(record: &PackageRecord) -> bool {
     record
         .package_name
         .eq_ignore_ascii_case(SPECIAL_PACKAGE_NAME)
-        && record.owner.eq_ignore_ascii_case(SPECIAL_OWNER)
+        && (record.owner.eq_ignore_ascii_case(SPECIAL_OWNER)
+            || record.owner.eq_ignore_ascii_case(SPECIAL_OWNER_LEGACY))
         && record.repo.eq_ignore_ascii_case(SPECIAL_REPO)
 }
